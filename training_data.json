@@ -18,6 +18,522 @@
       "text": "User: שלום Model: שלום ! כיצד אוכל לעזור לך ?"
     },
     {
+      "id": "he_formal_001",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: האם תוכל להסביר לי את התשובה? Model: כמובן. אשמח להסביר שוב בצורה ברורה ומסודרת."
+    },
+    {
+      "id": "he_formal_002",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: אני צריך עזרה בניסוח משפט. Model: בשמחה. כתוב את המשפט שברצונך לשפר ואסייע בתיקון דקדוק ובסגנון תקין."
+    },
+    {
+      "id": "he_formal_003",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: תודה רבה על העזרה. Model: אין בעד מה. אני שמח שהצלחתי לעזור."
+    },
+    {
+      "id": "he_formal_004",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: אני לא בטוח שהבנתי. Model: אין בעיה. האם תוכל לציין למה כוונתך במדויק, או לשאול שאלה נוספת כדי שנוכל לדייק?"
+    },
+    {
+      "id": "he_formal_005",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: תוכל להציע ניסוח רשמי יותר? Model: כן. למשל: "
+    },
+    {
+      "id": "he_formal_006",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: אני מבקש שתגיד לי אם זה נכון. Model: אבדוק ואאשר. אם יש צורך, אתקן את הניסוח כדי שיהיה מדויק יותר."
+    },
+    {
+      "id": "he_formal_007",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: סליחה על ההטרדה. Model: אין צורך להתנצל. שאלתך חשובה, ואשמח לעזור בכל עת."
+    },
+    {
+      "id": "he_formal_008",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: מה כדאי לעשות עכשיו? Model: בשלב הראשון, נסכם את מטרתך. לאחר מכן נתקדם צעד אחר צעד לפי מה שהגדרת."
+    },
+    {
+      "id": "he_formal_009",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: אפשר תשובה קצרה וברורה? Model: בהחלט. התשובה היא כן, עם מספר תנאים. אם תרצה, אפרט גם בהמשך."
+    },
+    {
+      "id": "he_formal_010",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: תוכל לנסח הודעת תודה? Model: כמובן. "
+    },
+    {
+      "id": "en_formal_001",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: Could you explain the answer? Model: Of course. I will explain it again in a clear and well-structured way."
+    },
+    {
+      "id": "en_formal_002",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: I need help with a sentence. Model: Certainly. Please write the sentence you want to improve, and I will correct it for grammar and clarity."
+    },
+    {
+      "id": "en_formal_003",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: Thank you very much for your help. Model: You are welcome. I am glad I could help you."
+    },
+    {
+      "id": "en_formal_004",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: I am not sure I understood. Model: That is fine. Could you tell me what you mean more precisely, or ask a follow-up question so we can clarify?"
+    },
+    {
+      "id": "en_formal_005",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: Can you suggest a more formal wording? Model: Yes. For example: "
+    },
+    {
+      "id": "en_formal_006",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: Please tell me whether this is correct. Model: I will check it and confirm. If needed, I will adjust the wording to be more accurate and natural."
+    },
+    {
+      "id": "en_formal_007",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: Sorry to bother you. Model: No need to apologize. Your question is important, and I will gladly help."
+    },
+    {
+      "id": "en_formal_008",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: What should we do now? Model: First, let us summarize your goal. Then we will proceed step by step according to what you have defined."
+    },
+    {
+      "id": "en_formal_009",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: Can you give a short and clear answer? Model: Yes. The answer is yes, with a few conditions. If you want, I can explain further."
+    },
+    {
+      "id": "en_formal_010",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: Can you write a thank-you message? Model: Certainly. Here is a formal version you can use."
+    },
+    {
+      "id": "bi_formal_001",
+      "source": "dialogue",
+      "topic": "דו לשוניות - תקינות",
+      "text": "User: תענה בעברית תקינה בלבד. Model: אענה בהתאם. אנא ציין את השאלה, ואספק תשובה ברורה ומדויקת בשפה העברית."
+    },
+    {
+      "id": "bi_formal_002",
+      "source": "dialogue",
+      "topic": "דו לשוניות - תקינות",
+      "text": "User: Answer politely and with correct grammar in English. Model: I will respond politely. Please tell me your question, and I will provide a clear and grammatically correct answer."
+    },
+    {
+      "id": "bi_formal_003",
+      "source": "dialogue",
+      "topic": "דו לשוניות - תקינות",
+      "text": "User: תענה גם בעברית וגם באנגלית. Model: אענה בעברית תחילה, ולאחר מכן באנגלית. אם תרצה ניסוח נוסף, אוכל להתאים את הסגנון."
+    },
+    {
+      "id": "bi_formal_004",
+      "source": "dialogue",
+      "topic": "דו לשוניות - תקינות",
+      "text": "User: I need a corrected translation. Model: I can help. Please provide your text, and I will correct the grammar and produce a more natural translation."
+    },
+    {
+      "id": "bi_formal_005",
+      "source": "dialogue",
+      "topic": "דו לשוניות - תקינות",
+      "text": "User: האם תוכל לנסח מחדש בצורה תקינה? Model: כן. אנסח מחדש כדי לשפר דקדוק, בהירות ורצף, ואשמור על המשמעות המקורית."
+    },
+    {
+      "id": "bi_formal_006",
+      "source": "dialogue",
+      "topic": "דו לשוניות - תקינות",
+      "text": "User: Could you rephrase it more clearly? Model: Certainly. I will rephrase it with better grammar and clarity while keeping the original meaning."
+    },
+    {
+      "id": "he_formal_011",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: אני רוצה תשובה מסודרת. Model: בשמחה. אציג נקודות עיקריות, ולאחר מכן אסביר כל נקודה בקצרה."
+    },
+    {
+      "id": "en_formal_011",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: I would like a structured answer. Model: Certainly. I will present the main points first, and then briefly explain each one."
+    },
+    {
+      "id": "he_formal_012",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: האם אפשר דוגמה? Model: כן. למשל, כך כותבים: 'תודה על הפנייה, אשמח לעזור'."
+    },
+    {
+      "id": "en_formal_012",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: Can you provide an example? Model: Yes. For instance, you can write: 'Thank you for contacting me; I would be happy to help'."
+    },
+    {
+      "id": "he_formal_013",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: תוכל לאמת את העובדות? Model: אני יכול לעזור, אך איני מבצע בדיקות מקוונות. אם תספק מקורות או נתונים, אוכל לעזור להעריך אותם."
+    },
+    {
+      "id": "en_formal_013",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: Can you verify the facts? Model: I can help, but I cannot browse the web. If you provide sources or data, I can help you evaluate them."
+    },
+    {
+      "id": "he_formal_014",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: אני צריך ניסוח מקצועי. Model: בשמחה. כתוב את הפרטים המרכזיים, ואני אכין ניסוח מקצועי וברור לשימוש בעבודה."
+    },
+    {
+      "id": "en_formal_014",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: I need a professional wording. Model: Certainly. Share the key details, and I will draft a professional, clear message for workplace use."
+    },
+    {
+      "id": "he_formal_015",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: האם תוכל לסכם בכמה משפטים? Model: כן. הנה סיכום קצר: המטרה הוגדרה, נבנה תוכנית, ואז בודקים תוצאות ומשפרים."
+    },
+    {
+      "id": "en_formal_015",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: Can you summarize in a few sentences? Model: Yes. Here is a short summary: the goal was defined, a plan was created, and then results were reviewed to improve."
+    },
+    {
+      "id": "he_formal_016",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: אני רוצה לשאול שאלה נוספת. Model: בשמחה. מה השאלה הנוספת שברצונך לברר?"
+    },
+    {
+      "id": "en_formal_016",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: I have another question. Model: Of course. What is the additional question you would like to ask?"
+    },
+    {
+      "id": "he_formal_017",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: תוכל להסביר במילים פשוטות? Model: כן. אסביר במילים פשוטות, ולאחר מכן אתן דוגמה שתמחיש את הרעיון."
+    },
+    {
+      "id": "en_formal_017",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: Can you explain it in simpler words? Model: Yes. I will explain it in simple terms, and then provide an example to illustrate the idea."
+    },
+    {
+      "id": "he_formal_018",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: האם תוכל להתאים את רמת ההסבר? Model: כמובן. אמור לי מה הרמה שלך, ואכוון את ההסבר לרמה המתאימה."
+    },
+    {
+      "id": "en_formal_018",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: Can you adjust the explanation level? Model: Certainly. Tell me your current level, and I will tailor the explanation accordingly."
+    },
+    {
+      "id": "he_formal_019",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: תודה, זה עזר לי מאוד. Model: אני שמח מאוד לשמוע. אם תרצה עוד משהו, כתוב לי בשמחה."
+    },
+    {
+      "id": "en_formal_019",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: Thank you, that really helped. Model: I am very glad to hear that. If you need anything else, feel free to write to me."
+    },
+    {
+      "id": "he_formal_020",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: לסיכום, מה החשוב ביותר? Model: החשוב ביותר הוא להבין את המטרה, לבחור דרך פעולה מתאימה, ולבדוק תוצאות כדי להשתפר."
+    },
+    {
+      "id": "en_formal_020",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: In summary, what is most important? Model: The most important thing is to understand the goal, choose an appropriate approach, and review results to keep improving."
+    },
+    {
+      "id": "he_formal_021",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: אני רוצה שהכול יהיה ברור. Model: בהחלט. אשיב בשפה ברורה, עם מבנה הגיוני, כדי שלא תהיה אי-הבנה."
+    },
+    {
+      "id": "en_formal_021",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: I want everything to be clear. Model: Absolutely. I will respond in clear language with a logical structure to avoid any confusion."
+    },
+    {
+      "id": "he_formal_022",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: האם תוכל לתקן שגיאות כתיב? Model: כן. הדבק את הטקסט שברצונך לתקן, ואני אתקן כתיב ודקדוק בהתאם."
+    },
+    {
+      "id": "en_formal_022",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: Can you correct spelling mistakes? Model: Yes. Paste the text you want to correct, and I will fix spelling and grammar accordingly."
+    },
+    {
+      "id": "he_formal_023",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: איך מתחילים? Model: מתחילים בהגדרת הבעיה בצורה ברורה, ואז מחלקים את המשימה לשלבים קטנים לביצוע."
+    },
+    {
+      "id": "en_formal_023",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: How do we begin? Model: We begin by defining the problem clearly, and then we break the task into small, manageable steps."
+    },
+    {
+      "id": "he_formal_024",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: מה תעשה אם משהו לא ברור? Model: אם משהו לא ברור, אשאל שאלות הבהרה כדי לוודא שהבנתי נכון לפני שאמשיך."
+    },
+    {
+      "id": "en_formal_024",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: What will you do if something is unclear? Model: If something is unclear, I will ask clarifying questions to make sure I understood correctly before continuing."
+    },
+    {
+      "id": "he_formal_025",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: אני רוצה שתענה בצורה עניינית. Model: בהחלט. אענה בצורה עניינית, עם תשובה ממוקדת לשאלה שהצגת."
+    },
+    {
+      "id": "en_formal_025",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: I want you to answer in a matter-of-fact way. Model: Certainly. I will answer in a focused and matter-of-fact manner, directly addressing your question."
+    },
+    {
+      "id": "he_formal_026",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: אפשר לנסח את זה מחדש? Model: כן. הנה ניסוח מחדש: זהו הסבר קצר וברור, המאפשר להבין את הרעיון בלי מאמץ."
+    },
+    {
+      "id": "en_formal_026",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: Can you rephrase that? Model: Yes. Here is a rephrased version: this is a short, clear explanation that helps you understand the idea easily."
+    },
+    {
+      "id": "he_formal_027",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: אני רוצה תשובה עם דוגמאות. Model: כמובן. אציג דוגמה מעשית ולאחר מכן אסביר איך היא קשורה לרעיון המרכזי."
+    },
+    {
+      "id": "en_formal_027",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: I want an answer with examples. Model: Certainly. I will provide a practical example and then explain how it relates to the main idea."
+    },
+    {
+      "id": "he_formal_028",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: האם אתה יכול לעזור לי לנסח בקשה? Model: כן. תאר בבקשה למי הבקשה מיועדת ומה המטרה שלה, ואני אנסח בקשה מנומסת וברורה."
+    },
+    {
+      "id": "en_formal_028",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: Can you help me write a request? Model: Yes. Please describe who the request is for and what the goal is, and I will draft a polite and clear request."
+    },
+    {
+      "id": "he_formal_029",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: אני רוצה להיות בטוח שאני כותב נכון. Model: הבנתי. אם תשלח את המשפט שלך, אבדוק דקדוק וכתיב, ואציע תיקונים במידת הצורך."
+    },
+    {
+      "id": "en_formal_029",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: I want to make sure I write correctly. Model: I understand. If you send your sentence, I will review grammar and spelling and suggest corrections if needed."
+    },
+    {
+      "id": "he_formal_030",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: תודה, הבנתי את הרעיון. Model: מצוין. שמחתי לעזור. אם תרצה להתקדם לנושא הבא, תגיד לי."
+    },
+    {
+      "id": "en_formal_030",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: Thank you, I understand the idea now. Model: Great. I am glad I could help. If you want to move to the next topic, tell me."
+    },
+    {
+      "id": "he_formal_031",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: אני זקוק לניסוח מסודר למסמך. Model: בשמחה. כתוב את הנקודות המרכזיות, ואני אנסח אותן בצורה פורמלית וברורה."
+    },
+    {
+      "id": "en_formal_031",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: I need a well-structured text for a document. Model: Certainly. Share the key points, and I will draft them in a formal and clear way."
+    },
+    {
+      "id": "he_formal_032",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: מה יקרה אם אטעֵה בניסוח? Model: אם תטעֵה בניסוח, עלולים להבין אותך אחרת. לכן כדאי לתקן דקדוק ולשמור על משמעות מדויקת."
+    },
+    {
+      "id": "en_formal_032",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: What happens if I phrase it incorrectly? Model: If the wording is incorrect, people may understand you differently. That is why it helps to correct grammar and keep the meaning accurate."
+    },
+    {
+      "id": "he_formal_033",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: האם תוכל לתת תשובה מלאה? Model: כן. אענה בצורה מלאה ומדויקת, תוך פירוט קצר של השלבים."
+    },
+    {
+      "id": "en_formal_033",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: Can you give a complete answer? Model: Yes. I will respond fully and accurately, with a brief description of the steps."
+    },
+    {
+      "id": "he_formal_034",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: האם תוכל לענות בצורה פשוטה וברורה? Model: בהחלט. אסביר בשפה פשוטה, כדי שכל אחד יוכל להבין את התשובה."
+    },
+    {
+      "id": "en_formal_034",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: Can you answer in simple and clear language? Model: Yes. I will explain in simple terms so that everyone can understand the answer."
+    },
+    {
+      "id": "he_formal_035",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: אני רוצה לבדוק את התחביר שלי. Model: בשמחה. שלח משפט לדוגמה, ואני אציע תיקונים לשיפור התחביר והזרימה."
+    },
+    {
+      "id": "en_formal_035",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: I want to check my grammar. Model: Certainly. Send a sample sentence, and I will suggest corrections to improve grammar and flow."
+    },
+    {
+      "id": "he_formal_036",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: תודה, אתה עוזר מאוד. Model: תודה לך. אני שמח להיות מועיל."
+    },
+    {
+      "id": "en_formal_036",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: Thanks, you help a lot. Model: Thank you. I am glad to be helpful."
+    },
+    {
+      "id": "he_formal_037",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: מהו הדבר הראשון שצריך לעשות? Model: הדבר הראשון הוא לוודא שהשאלה מובנת. לאחר מכן נוכל לגשת לפתרון בצורה נכונה."
+    },
+    {
+      "id": "en_formal_037",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: What is the first thing we should do? Model: The first step is to make sure the question is understood. After that, we can approach the solution correctly."
+    },
+    {
+      "id": "he_formal_038",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: אני רוצה שתגיד לי מה חסר לי. Model: כדי לדעת מה חסר, אשאל כמה שאלות קצרות. לאחר מכן אסכם מה כדאי להשלים."
+    },
+    {
+      "id": "en_formal_038",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: I want you to tell me what I am missing. Model: To determine what you are missing, I will ask a few short questions. Then I will summarize what should be added."
+    },
+    {
+      "id": "he_formal_039",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: האם אפשר תשובה עם מבנה של נקודות? Model: כן. הנה תשובה בצורה של נקודות עיקריות, ואז פירוט קצר לכל נקודה."
+    },
+    {
+      "id": "en_formal_039",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: Can you answer using bullet points? Model: Yes. Here is the response as main points, followed by a brief explanation for each point."
+    },
+    {
+      "id": "he_formal_040",
+      "source": "dialogue",
+      "topic": "עברית תקינה",
+      "text": "User: תוכל לעזור לי לסיים תשובה בצורה טובה? Model: בהחלט. אציע משפט סיום מנומס וברור שיסכם את מה שנאמר."
+    },
+    {
+      "id": "en_formal_040",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: Can you help me end my answer professionally? Model: Certainly. I will suggest a polite closing sentence that summarizes what was said."
+    },
+    {
       "id": "dlg_1",
       "source": "dialogue",
       "topic": "שיחה",
