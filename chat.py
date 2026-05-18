@@ -142,6 +142,8 @@ def main():
     log_write("hint",    "Type in Hebrew or English and press Enter\n")
     log_write("divider", "─" * 60 + "\n\n")
 
+    conversation_history = []
+
     # ── sliders ──
     ctrl = tk.Frame(root, bg="#181825", pady=4)
     ctrl.pack(fill=tk.X, padx=10, pady=(4, 0))
@@ -185,7 +187,6 @@ def main():
             return
         entry.delete(0, tk.END)
 
-        # הצג שאלת משתמש — הפוך RTL
         log_write("you_lbl",  "You:   ")
         log_write("you_text", fix_rtl(user_text) + "\n")
 
@@ -193,26 +194,42 @@ def main():
         if tool_reply:
             log_write("ai_lbl",  "AI:    ")
             log_write("ai_text", fix_rtl(tool_reply) + "\n\n")
+            conversation_history.append(("user", user_text))
+            conversation_history.append(("model", tool_reply))
             return
 
-        # בנה פרומפט בפורמט שהמודל מכיר
-        prompt = f"user : {user_text} model :"
+        conversation_history.append(("user", user_text))
+        prompt_parts = []
+        for role, msg in conversation_history:
+            prompt_parts.append(f"{role} : {msg}")
+        prompt_parts.append("model :")
+        full_prompt = " ".join(prompt_parts)
+
         tokens = tok.clean(user_text)
         unk_token = tok.word2idx["<UNK>"]
         unknown_count = sum(tok.word2idx.get(w, unk_token) == unk_token for w in tokens)
         if tokens and unknown_count / len(tokens) > 0.35:
             reply = unknown_answer(user_text)
         else:
-            reply = generate(model, tok, prompt,
+            reply = generate(model, tok, full_prompt,
                              n_words=words_var.get(),
                              temperature=temp_var.get())
 
         if not reply:
             reply = "..."
 
-        # הצג תשובה — הפוך RTL
+        conversation_history.append(("model", reply))
         log_write("ai_lbl",  "AI:    ")
         log_write("ai_text", fix_rtl(reply) + "\n\n")
+
+    def clear_chat():
+        conversation_history.clear()
+        log.config(state=tk.NORMAL)
+        log.delete(1.0, tk.END)
+        log.config(state=tk.DISABLED)
+        log_write("hint",    "Mini Hebrew/English AI - powered by NumPy only\n")
+        log_write("hint",    "Type in Hebrew or English and press Enter\n")
+        log_write("divider", "─" * 60 + "\n\n")
 
     entry.bind("<Return>", send)
 
@@ -224,6 +241,15 @@ def main():
         relief=tk.FLAT, bd=0, padx=16,
         command=send, cursor="hand2",
     ).pack(side=tk.RIGHT, padx=(4, 8), pady=4, ipady=6)
+
+    tk.Button(
+        input_frame, text="Clear",
+        bg="#f38ba8", fg="#1e1e2e",
+        activebackground="#eba0ac",
+        font=("Consolas", 10, "bold"),
+        relief=tk.FLAT, bd=0, padx=12,
+        command=clear_chat, cursor="hand2",
+    ).pack(side=tk.RIGHT, padx=(4, 4), pady=4, ipady=6)
 
     root.mainloop()
 

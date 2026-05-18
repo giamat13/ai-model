@@ -132,6 +132,9 @@ def chat():
     log_write("hint", "אפשר לכתוב בעברית או באנגלית\n")
     log_write("hint", "─" * 55 + "\n\n")
 
+    # ── זיכרון שיחה ──────────────────────────────────────────
+    conversation_history = []
+
     ctrl = tk.Frame(root, bg="#181825", pady=4)
     ctrl.pack(fill=tk.X, padx=10, pady=(4, 0))
     tk.Label(ctrl, text="Words:", bg="#181825", fg="#6c7086",
@@ -167,7 +170,17 @@ def chat():
         if tool_reply:
             log_write("ai_lbl",  "AI:    ")
             log_write("ai_text", fix_rtl(tool_reply) + "\n\n")
+            conversation_history.append(("user", user_text))
+            conversation_history.append(("model", tool_reply))
             return
+
+        # בניית פרומפט עם כל ההיסטוריה
+        conversation_history.append(("user", user_text))
+        prompt_parts = []
+        for role, msg in conversation_history:
+            prompt_parts.append(f"{role} : {msg}")
+        prompt_parts.append("model :")
+        full_prompt = " ".join(prompt_parts)
 
         tokens = tok.clean(user_text)
         unk_token = tok.word2idx["<UNK>"]
@@ -175,15 +188,30 @@ def chat():
         if tokens and unknown_count / len(tokens) > 0.35:
             reply = unknown_answer(user_text)
         else:
-            reply = generate(user_text, words_var.get(), temp_var.get()) or "..."
+            reply = generate(full_prompt, words_var.get(), temp_var.get()) or "..."
+        
+        conversation_history.append(("model", reply))
         log_write("ai_lbl",  "AI:    ")
         log_write("ai_text", fix_rtl(reply) + "\n\n")
+
+    def clear_chat():
+        conversation_history.clear()
+        log.config(state=tk.NORMAL)
+        log.delete(1.0, tk.END)
+        log.config(state=tk.DISABLED)
+        log_write("hint", "Mini Hebrew/English AI - NumPy only\n")
+        log_write("hint", "אפשר לכתוב בעברית או באנגלית\n")
+        log_write("hint", "─" * 55 + "\n\n")
 
     entry.bind("<Return>", send)
     tk.Button(input_frame, text="Send  Enter",
               bg="#89b4fa", fg="#1e1e2e", activebackground="#74c7ec",
               font=("Consolas", 12, "bold"), relief=tk.FLAT, bd=0, padx=16,
               command=send, cursor="hand2").pack(side=tk.RIGHT, padx=(4, 8), pady=4, ipady=6)
+    tk.Button(input_frame, text="Clear",
+              bg="#f38ba8", fg="#1e1e2e", activebackground="#eba0ac",
+              font=("Consolas", 10, "bold"), relief=tk.FLAT, bd=0, padx=12,
+              command=clear_chat, cursor="hand2").pack(side=tk.RIGHT, padx=(4, 4), pady=4, ipady=6)
 
     root.mainloop()
 
