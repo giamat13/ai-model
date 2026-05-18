@@ -9,6 +9,9 @@ venv/
 # מודל מאומן (קבצים כבדים — לא מועלים ל-git)
 model.npz
 tokenizer.json
+api_training_data.json
+wikipedia_training_data.json
+github_training_data.json
 
 # IDE
 .vscode/settings.json

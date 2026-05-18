@@ -2,13 +2,13 @@
   "metadata": {
     "name": "mini_hebrew_chat_corpus_v2",
     "version": "2.0",
-    "description": "קורפוס עברי עם דיאלוגים ומאמרים לאימון מודל שיחה",
-    "language": "he",
-    "num_items": 85,
-    "num_dialogues": 79,
-    "num_articles": 6,
-    "total_words": 1550,
-    "total_characters": 7830
+    "description": "קורפוס דו-לשוני בעברית ובאנגלית עם דיאלוגים ומאמרים לאימון מודל שיחה",
+    "language": "he+en",
+    "num_items": 117,
+    "num_dialogues": 93,
+    "num_articles": 24,
+    "total_words": 2324,
+    "total_characters": 12097
   },
   "articles": [
     {
@@ -514,6 +514,198 @@
       "source": "מתמטיקה של רשתות נוירונים",
       "topic": "מתמטיקה",
       "text": "כל נוירון מקבל מספר קלטים מכפיל כל קלט במשקל שלו מחבר את כל התוצאות מוסיף ערך הטיה ומעביר דרך פונקציית אקטיבציה . פונקציית ReLU נותנת אפס לערכים שליליים וערך הקלט לערכים חיוביים . פונקציית Softmax ממירה וקטור של מספרים להסתברויות המסתכמות לאחד . הלמידה מתבצעת על ידי מזעור פונקציית ההפסד ."
+    },
+    {
+      "id": "en_dlg_hello",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: hello Model: Hello ! I can answer in English too ."
+    },
+    {
+      "id": "en_dlg_identity",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: who are you Model: I am a small bilingual language model . I know some Hebrew and some English ."
+    },
+    {
+      "id": "en_dlg_bilingual",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: do you know English Model: Yes . I can learn English and Hebrew together without replacing one language with the other ."
+    },
+    {
+      "id": "en_dlg_english",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: what is English Model: English is a human language used by many people for conversation science programming and learning ."
+    },
+    {
+      "id": "en_dlg_math",
+      "source": "dialogue",
+      "topic": "Mathematics",
+      "text": "User: what is mathematics Model: Mathematics studies numbers shapes patterns functions and logical reasoning ."
+    },
+    {
+      "id": "en_dlg_biology",
+      "source": "dialogue",
+      "topic": "Biology",
+      "text": "User: what is biology Model: Biology is the study of living things such as cells organisms genes ecosystems and evolution ."
+    },
+    {
+      "id": "en_dlg_thanks",
+      "source": "dialogue",
+      "topic": "English",
+      "text": "User: thank you Model: You are welcome . I am happy to help ."
+    },
+    {
+      "id": "he_dlg_english_001",
+      "source": "dialogue",
+      "topic": "אנגלית",
+      "text": "User: אתה יודע אנגלית Model: כן . אני לומד גם עברית וגם English באותו קורפוס ."
+    },
+    {
+      "id": "he_dlg_bilingual_001",
+      "source": "dialogue",
+      "topic": "דו לשוניות",
+      "text": "User: אל תחליף עברית באנגלית Model: ברור . עברית נשארת חשובה ואני מוסיף גם אנגלית כדי להיות דו לשוני ."
+    },
+    {
+      "id": "he_dlg_answer_language_001",
+      "source": "dialogue",
+      "topic": "דו לשוניות",
+      "text": "User: תענה גם בעברית וגם באנגלית Model: אנסה לענות בשפה שבה שאלת . אם תשאל בעברית אענה בעברית ואם תשאל באנגלית אנסה לענות באנגלית ."
+    },
+    {
+      "id": "he_dlg_biology_001",
+      "source": "dialogue",
+      "topic": "ביולוגיה",
+      "text": "User: מה זה ביולוגיה Model: ביולוגיה היא מדע החיים . היא חוקרת תאים גנים יצורים חיים מערכות אקולוגיות ואבולוציה ."
+    },
+    {
+      "id": "he_dlg_dna_001",
+      "source": "dialogue",
+      "topic": "ביולוגיה",
+      "text": "User: מה זה DNA Model: DNA הוא חומר תורשתי שנמצא בתאים ומכיל הוראות לבניית חלבונים ולתכונות של יצורים חיים ."
+    },
+    {
+      "id": "he_dlg_mathematics_001",
+      "source": "dialogue",
+      "topic": "מתמטיקה",
+      "text": "User: מה זה מתמטיקה Model: מתמטיקה היא תחום שחוקר מספרים צורות תבניות פונקציות והסקה לוגית ."
+    },
+    {
+      "id": "he_dlg_probability_001",
+      "source": "dialogue",
+      "topic": "מתמטיקה",
+      "text": "User: מה זה הסתברות Model: הסתברות היא דרך למדוד עד כמה אירוע צפוי לקרות בין אפס לאחד ."
+    },
+    {
+      "id": "he_bio_cell_001",
+      "source": "biology_seed",
+      "topic": "ביולוגיה",
+      "text": "ביולוגיה היא מדע החיים . תא הוא יחידת החיים הבסיסית . בתוך התא יש קרום תא ציטופלזמה וחומר תורשתי . יצורים חיים גדלים משתמשים באנרגיה מגיבים לסביבה ומתרבים ."
+    },
+    {
+      "id": "he_bio_dna_001",
+      "source": "biology_seed",
+      "topic": "DNA",
+      "text": "DNA הוא חומר תורשתי הנמצא בתאים . רצפים של DNA יוצרים גנים . גנים מכילים הוראות לבניית חלבונים . חלבונים מבצעים תפקידים רבים בגוף כמו בנייה הובלה תקשורת וזירוז תגובות כימיות ."
+    },
+    {
+      "id": "he_bio_evolution_001",
+      "source": "biology_seed",
+      "topic": "אבולוציה",
+      "text": "אבולוציה היא שינוי בתכונות של אוכלוסיות לאורך דורות . ברירה טבעית מתרחשת כאשר תכונות מסוימות עוזרות ליצורים לשרוד ולהתרבות . עם הזמן תכונות מועילות יכולות להפוך נפוצות יותר ."
+    },
+    {
+      "id": "he_bio_ecosystem_001",
+      "source": "biology_seed",
+      "topic": "מערכת אקולוגית",
+      "text": "מערכת אקולוגית כוללת יצורים חיים ואת הסביבה שלהם . צמחים יצרנים מפיקים חומר אורגני מאור השמש . בעלי חיים צרכנים מקבלים אנרגיה ממזון . מפרקים מחזירים חומרים לקרקע ."
+    },
+    {
+      "id": "he_bio_photosynthesis_001",
+      "source": "biology_seed",
+      "topic": "פוטוסינתזה",
+      "text": "פוטוסינתזה היא תהליך שבו צמחים אצות וחיידקים מסוימים משתמשים באור כדי להפוך מים ופחמן דו חמצני לסוכר וחמצן . התהליך מספק אנרגיה למערכות אקולוגיות רבות ."
+    },
+    {
+      "id": "en_bio_cell_001",
+      "source": "biology_seed",
+      "topic": "Biology",
+      "text": "A cell is the basic unit of life . Cells contain genetic material and structures that help them use energy grow and respond to the environment ."
+    },
+    {
+      "id": "en_bio_dna_001",
+      "source": "biology_seed",
+      "topic": "DNA",
+      "text": "DNA stores genetic information . A gene is a segment of DNA that can help build a protein . Proteins support structure movement signals and chemical reactions in living organisms ."
+    },
+    {
+      "id": "en_bio_evolution_001",
+      "source": "biology_seed",
+      "topic": "Evolution",
+      "text": "Evolution is change in inherited traits across generations . Natural selection can make helpful traits more common when they improve survival or reproduction ."
+    },
+    {
+      "id": "he_math_numbers_001",
+      "source": "math_seed",
+      "topic": "מתמטיקה",
+      "text": "מתמטיקה חוקרת מספרים צורות תבניות ומבנים . מספרים טבעיים משמשים לספירה . שברים מתארים חלקים מתוך שלם . מספרים שליליים מתארים ערכים קטנים מאפס ."
+    },
+    {
+      "id": "he_math_algebra_001",
+      "source": "math_seed",
+      "topic": "אלגברה",
+      "text": "אלגברה משתמשת בסמלים כמו x ו y כדי לייצג מספרים לא ידועים . משוואה היא טענה ששני ביטויים שווים . פתרון משוואה הוא מציאת ערך שהופך את הטענה לנכונה ."
+    },
+    {
+      "id": "he_math_function_001",
+      "source": "math_seed",
+      "topic": "פונקציות",
+      "text": "פונקציה מקבלת קלט ומחזירה פלט . לדוגמה הפונקציה f של x שווה x כפול x מחזירה את הריבוע של המספר . גרף של פונקציה מציג קשר בין קלטים לפלטים ."
+    },
+    {
+      "id": "he_math_derivative_001",
+      "source": "math_seed",
+      "topic": "חשבון דיפרנציאלי",
+      "text": "נגזרת מודדת קצב שינוי רגעי . אם פונקציה מתארת מיקום לפי זמן אז הנגזרת שלה מתארת מהירות . נגזרת חיובית אומרת שהפונקציה עולה ונגזרת שלילית אומרת שהיא יורדת ."
+    },
+    {
+      "id": "he_math_probability_001",
+      "source": "math_seed",
+      "topic": "הסתברות",
+      "text": "הסתברות מודדת עד כמה אירוע צפוי לקרות . ערך אפס אומר שהאירוע בלתי אפשרי וערך אחד אומר שהאירוע ודאי . בהטלת מטבע הוגן ההסתברות לעץ היא חצי ."
+    },
+    {
+      "id": "en_math_algebra_001",
+      "source": "math_seed",
+      "topic": "Algebra",
+      "text": "Algebra uses symbols to represent unknown numbers . An equation says that two expressions are equal . Solving an equation means finding a value that makes it true ."
+    },
+    {
+      "id": "en_math_calculus_001",
+      "source": "math_seed",
+      "topic": "Calculus",
+      "text": "Calculus studies change . A derivative measures an instantaneous rate of change . An integral can measure accumulation such as area under a curve ."
+    },
+    {
+      "id": "en_math_probability_001",
+      "source": "math_seed",
+      "topic": "Probability",
+      "text": "Probability describes uncertainty . A probability of zero means impossible and a probability of one means certain . A fair coin has probability one half for heads ."
+    },
+    {
+      "id": "bilingual_curriculum_001",
+      "source": "bilingual_seed",
+      "topic": "דו לשוניות",
+      "text": "עברית ואנגלית יכולות להופיע יחד באותו אימון . Hebrew words and English words receive tokens in the same vocabulary . The model should not forget Hebrew when it learns English ."
+    },
+    {
+      "id": "bilingual_curriculum_002",
+      "source": "bilingual_seed",
+      "topic": "למידה",
+      "text": "כאשר מוסיפים דאטה חדש חשוב לאזן בין נושאים . Biology teaches life science . Mathematics teaches patterns logic numbers and functions . שיחה מלמדת את המודל איך לענות למשתמש ."
     },
     {
       "id": "dialogue_format",

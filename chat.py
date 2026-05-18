@@ -3,6 +3,7 @@ chat.py — ממשק גרפי לשיחה עם המודל המאומן
 """
 
 import os
+import sys
 import tkinter as tk
 from tkinter import scrolledtext
 import numpy as np
@@ -10,20 +11,28 @@ import numpy as np
 from tokenizer import Tokenizer
 from model     import MiniLM
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 _HERE = os.path.dirname(os.path.abspath(__file__))
 
 
-# ── תיקון RTL: הופך סדר מילים בעברית ──────────────────────────────────────
+# ── תיקון RTL: הופך סדר מילים רק בשורות עבריות ───────────────────────────
+def has_hebrew(text: str) -> bool:
+    return any("\u0590" <= ch <= "\u05FF" for ch in text)
+
+
 def fix_rtl(text: str) -> str:
     """
-    tkinter ב-Windows לא תומך ב-RTL.
-    הפתרון: להפוך את סדר המילים בכל שורה.
+    tkinter ב-Windows לא תומך טוב ב-RTL.
+    אנגלית נשארת כמו שהיא כדי שהמודל יוכל לעבוד דו-לשונית.
     """
     lines = text.split("\n")
     fixed = []
     for line in lines:
         words = line.split()
-        fixed.append(" ".join(reversed(words)) if words else "")
+        fixed.append(" ".join(reversed(words)) if words and has_hebrew(line) else line)
     return "\n".join(fixed)
 
 
@@ -101,7 +110,7 @@ def main():
     print(f"Ready — {model.num_params():,} params")
 
     root = tk.Tk()
-    root.title("Mini Hebrew AI - Chat")
+    root.title("Mini Hebrew/English AI - Chat")
     root.geometry("680x540")
     root.configure(bg="#1e1e2e")
     root.resizable(True, True)
@@ -128,8 +137,8 @@ def main():
         log.config(state=tk.DISABLED)
         log.see(tk.END)
 
-    log_write("hint",    "Mini Hebrew AI - powered by NumPy only\n")
-    log_write("hint",    "Type anything in Hebrew and press Enter\n")
+    log_write("hint",    "Mini Hebrew/English AI - powered by NumPy only\n")
+    log_write("hint",    "Type in Hebrew or English and press Enter\n")
     log_write("divider", "─" * 60 + "\n\n")
 
     # ── sliders ──
@@ -184,14 +193,14 @@ def main():
         known  = [w for w in tok.clean(prompt) if w in tok.word2idx]
         if len(known) < 2:
             log_write("hint",
-                "AI:    " + fix_rtl("מילה לא מוכרת — נסה: שלום / מה זה / מי אתה") + "\n\n")
+                "AI:    " + fix_rtl("מילים לא מוכרות - נסה בעברית או באנגלית פשוטה") + "\n\n")
             return
 
         tokens = tok.clean(user_text)
         unk_token = tok.word2idx["<UNK>"]
         unknown_count = sum(tok.word2idx.get(w, unk_token) == unk_token for w in tokens)
         if tokens and unknown_count == len(tokens):
-            reply = "אני לא יודע אם צריך."
+            reply = "אני עדיין לא מכיר את המילים האלה. נסה שאלה פשוטה יותר."
         else:
             reply = generate(model, tok, prompt,
                              n_words=words_var.get(),

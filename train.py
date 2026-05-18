@@ -11,11 +11,16 @@ train.py — לולאת אימון מלאה
 
 import json
 import os
+import sys
 import time
 import numpy as np
 
 from tokenizer import Tokenizer
 from model     import MiniLM
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 
 # ════════════════════════════════════════════════════════════════
@@ -25,25 +30,40 @@ from model     import MiniLM
 import os
 _HERE       = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH   = os.path.join(_HERE, "training_data.json")
+API_DATA_PATH = os.path.join(_HERE, "api_training_data.json")
+DATA_PATHS  = [DATA_PATH, API_DATA_PATH]
 SAVE_DIR    = _HERE
 
-CONTEXT_LEN = 5       # כמה מילים אחורה המודל רואה
-EMBED_DIM   = 64      # מימד ה-embedding לכל מילה
-HIDDEN_DIM  = 128     # נוירונים בשכבה הנסתרת
-EPOCHS      = 150      # כמה פעמים לעבור על כל הנתונים
-LR          = 0.08    # learning rate
-LOG_EVERY   = 10      # כל כמה epochs להדפיס דוגמה
+CONTEXT_LEN = int(os.environ.get("CONTEXT_LEN", "5"))       # כמה מילים אחורה המודל רואה
+EMBED_DIM   = int(os.environ.get("EMBED_DIM", "64"))        # מימד ה-embedding לכל מילה
+HIDDEN_DIM  = int(os.environ.get("HIDDEN_DIM", "128"))      # נוירונים בשכבה הנסתרת
+EPOCHS      = int(os.environ.get("EPOCHS", "120"))          # כמה פעמים לעבור על כל הנתונים
+LR          = float(os.environ.get("LR", "0.01"))           # learning rate
+LOG_EVERY   = int(os.environ.get("LOG_EVERY", "10"))        # כל כמה epochs להדפיס דוגמה
 
 
 # ════════════════════════════════════════════════════════════════
 #  טעינת נתונים
 # ════════════════════════════════════════════════════════════════
 
-def load_texts(path: str) -> list[str]:
-    with open(path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-    texts = [a["text"] for a in data["articles"]]
-    print(f"[Data] נטענו {len(texts)} מאמרים")
+def load_texts(paths: list[str]) -> list[str]:
+    texts = []
+    loaded_files = []
+
+    for path in paths:
+        if not os.path.exists(path):
+            continue
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        file_texts = [a["text"] for a in data.get("articles", []) if a.get("text")]
+        texts.extend(file_texts)
+        loaded_files.append((os.path.basename(path), len(file_texts)))
+
+    if not texts:
+        raise FileNotFoundError("לא נמצאו קבצי דאטה לאימון")
+
+    summary = ", ".join(f"{name}: {count}" for name, count in loaded_files)
+    print(f"[Data] נטענו {len(texts)} פריטים ({summary})")
     return texts
 
 
@@ -151,7 +171,7 @@ def train():
     print("=" * 56)
 
     # ── 1. נתונים ───────────────────────────────────────────────
-    texts = load_texts(DATA_PATH)
+    texts = load_texts(DATA_PATHS)
 
     # ── 2. Tokenizer ────────────────────────────────────────────
     tok = Tokenizer()
@@ -220,7 +240,13 @@ def train():
     print("\n" + "=" * 56)
     print("  🎤  דוגמאות יצירה אחרי אימון")
     print("=" * 56)
-    seeds = ["User: שלום Model:", "User: מי אתה Model:", "User: מה זה בינה מלאכותית Model:", "User: תודה Model:", "User: מה זה רשת נוירונים Model:"]
+    seeds = [
+        "User: שלום Model:",
+        "User: Hello Model:",
+        "User: מה זה ביולוגיה Model:",
+        "User: what is mathematics Model:",
+        "User: מה זה רשת נוירונים Model:",
+    ]
     for seed in seeds:
         out = generate(model, tok, seed, n_words=10, temperature=0.8)
         print(f"  {seed:>8} →  {out}")

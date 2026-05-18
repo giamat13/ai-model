@@ -8,6 +8,10 @@ run.py — מאמן אם צריך, ואז פותח את הצ'אט.
 import os
 import sys
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 _HERE = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(_HERE, "model.npz")
 TOK_PATH   = os.path.join(_HERE, "tokenizer.json")
@@ -18,72 +22,9 @@ def need_training() -> bool:
 
 
 def train():
-    import json, time
-    import numpy as np
-    from tokenizer import Tokenizer
-    from model     import MiniLM
+    from train import train as train_model
 
-    DATA_PATH   = os.path.join(_HERE, "training_data.json")
-    CONTEXT_LEN = 5
-    EMBED_DIM   = 64
-    HIDDEN_DIM  = 128
-    EPOCHS      = 150
-    LR          = 0.08
-
-    print("=" * 56)
-    print("  אימון מודל — NumPy בלבד")
-    print("=" * 56)
-
-    with open(DATA_PATH, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    texts = [a["text"] for a in data["articles"]]
-    print(f"[Data] {len(texts)} מאמרים ודיאלוגים נטענו")
-
-    tok = Tokenizer()
-    tok.build_vocab(texts, min_freq=1)
-    tok.save(TOK_PATH)
-
-    # הכנת דוגמאות
-    pad_id = tok.word2idx["<PAD>"]
-    samples = []
-    for text in texts:
-        ids = tok.encode(text, add_special=True)
-        if len(ids) <= CONTEXT_LEN:
-            continue
-        for i in range(len(ids) - CONTEXT_LEN):
-            ctx    = ids[i : i + CONTEXT_LEN]
-            target = ids[i + CONTEXT_LEN]
-            if target != pad_id:
-                samples.append((np.array(ctx), target))
-    print(f"[Data] {len(samples):,} דוגמאות אימון")
-
-    np.random.seed(42)
-    model = MiniLM(tok.vocab_size, EMBED_DIM, HIDDEN_DIM, CONTEXT_LEN)
-    print(f"[Model] {model.num_params():,} פרמטרים\n")
-
-    print(f"{'Epoch':>6}  {'Loss':>8}  {'זמן':>5}")
-    print("-" * 26)
-
-    for epoch in range(1, EPOCHS + 1):
-        t0 = time.time()
-        np.random.shuffle(samples)
-        total = 0.0
-        for ctx, target in samples:
-            probs  = model.forward(ctx)
-            loss   = model.cross_entropy_loss(probs, target)
-            grads  = model.backward(target)
-            model.update(grads, lr=LR)
-            total += loss
-        avg = total / len(samples)
-        if epoch % 30 == 0 or epoch == 1:
-            print(f"{epoch:>6}  {avg:>8.4f}  {time.time()-t0:>4.1f}s")
-
-    np.savez(MODEL_PATH,
-        E=model.E, W1=model.W1, b1=model.b1,
-        W2=model.W2, b2=model.b2,
-        config=np.array([tok.vocab_size, EMBED_DIM, HIDDEN_DIM, CONTEXT_LEN])
-    )
-    print(f"\nמודל נשמר → {MODEL_PATH}\n")
+    train_model()
 
 
 def chat():
@@ -107,9 +48,12 @@ def chat():
     print(f"מודל נטען — {model.num_params():,} פרמטרים, vocab {tok.vocab_size}")
 
     # RTL fix
+    def has_hebrew(text):
+        return any("\u0590" <= ch <= "\u05FF" for ch in text)
+
     def fix_rtl(text):
         return "\n".join(
-            " ".join(reversed(line.split())) if line.strip() else ""
+            " ".join(reversed(line.split())) if has_hebrew(line) else line
             for line in text.split("\n")
         )
 
@@ -145,7 +89,7 @@ def chat():
 
     # GUI
     root = tk.Tk()
-    root.title("Mini Hebrew AI")
+    root.title("Mini Hebrew/English AI")
     root.geometry("680x540")
     root.configure(bg="#1e1e2e")
     root.resizable(True, True)
@@ -169,7 +113,8 @@ def chat():
         log.config(state=tk.DISABLED)
         log.see(tk.END)
 
-    log_write("hint", "Mini Hebrew AI — NumPy only\n")
+    log_write("hint", "Mini Hebrew/English AI - NumPy only\n")
+    log_write("hint", "אפשר לכתוב בעברית או באנגלית\n")
     log_write("hint", "─" * 55 + "\n\n")
 
     # sliders
@@ -206,13 +151,13 @@ def chat():
         log_write("you_text", fix_rtl(user_text) + "\n")
         known = [w for w in tok.clean(f"user : {user_text} model :") if w in tok.word2idx]
         if len(known) < 2:
-            log_write("hint", "AI:    " + fix_rtl("מילה לא מוכרת — נסה: שלום / מה זה / מי אתה") + "\n\n")
+            log_write("hint", "AI:    " + fix_rtl("מילים לא מוכרות - נסה בעברית או באנגלית פשוטה") + "\n\n")
             return
         tokens = tok.clean(user_text)
         unk_token = tok.word2idx["<UNK>"]
         unknown_count = sum(tok.word2idx.get(w, unk_token) == unk_token for w in tokens)
         if tokens and unknown_count == len(tokens):
-            reply = "אני לא יודע אם צריך."
+            reply = "אני עדיין לא מכיר את המילים האלה. נסה שאלה פשוטה יותר."
         else:
             reply = generate(user_text, words_var.get(), temp_var.get()) or "..."
         log_write("ai_lbl",  "AI:    ")
