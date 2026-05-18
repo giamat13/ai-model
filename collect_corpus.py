@@ -33,21 +33,15 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 
-DEFAULT_WIKIPEDIA_PAGES = [
+DEFAULT_WIKIPEDIA_SEEDS = [
     ("he", "אנגלית"),
     ("he", "ביולוגיה"),
-    ("he", "תא"),
-    ("he", "DNA"),
     ("he", "מתמטיקה"),
-    ("he", "אלגברה"),
-    ("he", "חשבון אינפיניטסימלי"),
+    ("he", "מדעי המחשב"),
     ("en", "English language"),
     ("en", "Biology"),
-    ("en", "Cell (biology)"),
-    ("en", "DNA"),
     ("en", "Mathematics"),
-    ("en", "Algebra"),
-    ("en", "Calculus"),
+    ("en", "Computer science"),
 ]
 
 DEFAULT_GITHUB_QUERIES = [
@@ -55,6 +49,8 @@ DEFAULT_GITHUB_QUERIES = [
     "topic:machine-learning stars:>1000",
     "topic:mathematics stars:>50",
     "topic:biology stars:>50",
+    "topic:education stars:>100",
+    "topic:science stars:>100",
 ]
 
 USER_AGENT = "mini-bilingual-ai-corpus-builder/1.0"
@@ -66,8 +62,18 @@ def request_json(url: str, headers: dict[str, str] | None = None) -> dict[str, A
         request_headers.update(headers)
 
     req = urllib.request.Request(url, headers=request_headers)
-    with urllib.request.urlopen(req, timeout=30) as response:
-        return json.loads(response.read().decode("utf-8"))
+    for attempt in range(4):
+        try:
+            with urllib.request.urlopen(req, timeout=30) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            if exc.code in {403, 429} and attempt < 3:
+                wait = 2.0 * (attempt + 1)
+                print(f"[HTTP] rate limit זמני, ממתין {wait:.0f}s")
+                time.sleep(wait)
+                continue
+            raise
+    raise RuntimeError("request failed")
 
 
 def normalize_text(text: str, max_chars: int) -> str:
@@ -117,6 +123,77 @@ def wikipedia_extract(lang: str, title: str, max_chars: int) -> dict[str, Any] |
     return None
 
 
+def wikipedia_search_titles(lang: str, query: str, limit: int) -> list[str]:
+    params = urllib.parse.urlencode(
+        {
+            "action": "query",
+            "format": "json",
+            "list": "search",
+            "srsearch": query,
+            "srlimit": limit,
+        }
+    )
+    url = f"https://{lang}.wikipedia.org/w/api.php?{params}"
+    data = request_json(url)
+    return [
+        item["title"]
+        for item in data.get("query", {}).get("search", [])
+        if item.get("title")
+    ]
+
+
+def wikipedia_random_titles(lang: str, limit: int) -> list[str]:
+    params = urllib.parse.urlencode(
+        {
+            "action": "query",
+            "format": "json",
+            "list": "random",
+            "rnnamespace": "0",
+            "rnlimit": limit,
+        }
+    )
+    url = f"https://{lang}.wikipedia.org/w/api.php?{params}"
+    data = request_json(url)
+    return [
+        item["title"]
+        for item in data.get("query", {}).get("random", [])
+        if item.get("title")
+    ]
+
+
+def discover_wikipedia_pages(
+    seeds: list[tuple[str, str]], per_seed: int, random_per_lang: int
+) -> list[tuple[str, str]]:
+    pages: list[tuple[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+
+    def add(lang: str, title: str) -> None:
+        key = (lang, title)
+        if title and key not in seen:
+            seen.add(key)
+            pages.append(key)
+
+    for lang, seed in seeds:
+        add(lang, seed)
+        try:
+            for title in wikipedia_search_titles(lang, seed, per_seed):
+                add(lang, title)
+        except urllib.error.URLError as exc:
+            print(f"[Wikipedia] חיפוש נכשל עבור {lang}:{seed} - {exc}")
+        time.sleep(0.2)
+
+    for lang in sorted({lang for lang, _ in seeds}):
+        try:
+            for title in wikipedia_random_titles(lang, random_per_lang):
+                add(lang, title)
+        except urllib.error.URLError as exc:
+            print(f"[Wikipedia] דפי רנדום נכשלו עבור {lang} - {exc}")
+        time.sleep(0.2)
+
+    print(f"[Wikipedia] נמצאו אוטומטית {len(pages)} ערכים")
+    return pages
+
+
 def collect_wikipedia(
     pages: list[tuple[str, str]], max_chars: int
 ) -> list[dict[str, Any]]:
@@ -130,6 +207,7 @@ def collect_wikipedia(
         if item:
             items.append(item)
             print(f"[Wikipedia] נוסף: {lang}:{title}")
+        time.sleep(0.4)
     return items
 
 
@@ -276,12 +354,20 @@ def parse_wiki_page(value: str) -> tuple[str, str]:
     return lang.strip(), title.strip()
 
 
+def parse_wiki_seed(value: str) -> tuple[str, str]:
+    return parse_wiki_page(value)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build extra training corpus.")
     parser.add_argument("--source", choices=["wikipedia", "github", "both"], default="both")
     parser.add_argument("--out", default="api_training_data.json")
     parser.add_argument("--merge-into", default="")
     parser.add_argument("--wiki-page", action="append", type=parse_wiki_page)
+    parser.add_argument("--wiki-seed", action="append", type=parse_wiki_seed)
+    parser.add_argument("--wiki-per-seed", type=int, default=4)
+    parser.add_argument("--wiki-random", type=int, default=4)
+    parser.add_argument("--no-auto-wiki", action="store_true")
     parser.add_argument("--github-query", action="append")
     parser.add_argument("--github-limit", type=int, default=10)
     parser.add_argument("--max-chars", type=int, default=2500)
@@ -290,7 +376,16 @@ def main() -> None:
 
     items: list[dict[str, Any]] = []
     if args.source in {"wikipedia", "both"}:
-        pages = args.wiki_page or DEFAULT_WIKIPEDIA_PAGES
+        pages = list(args.wiki_page or [])
+        if not args.no_auto_wiki:
+            seeds = args.wiki_seed or DEFAULT_WIKIPEDIA_SEEDS
+            pages.extend(
+                discover_wikipedia_pages(
+                    seeds,
+                    per_seed=max(args.wiki_per_seed, 0),
+                    random_per_lang=max(args.wiki_random, 0),
+                )
+            )
         items.extend(collect_wikipedia(pages, args.max_chars))
 
     if args.source in {"github", "both"}:

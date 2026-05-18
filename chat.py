@@ -10,6 +10,7 @@ import numpy as np
 
 from tokenizer import Tokenizer
 from model     import MiniLM
+from assistant_tools import answer_with_tools, unknown_answer
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -188,19 +189,19 @@ def main():
         log_write("you_lbl",  "You:   ")
         log_write("you_text", fix_rtl(user_text) + "\n")
 
-        # בנה פרומפט בפורמט שהמודל מכיר
-        prompt = f"user : {user_text} model :"
-        known  = [w for w in tok.clean(prompt) if w in tok.word2idx]
-        if len(known) < 2:
-            log_write("hint",
-                "AI:    " + fix_rtl("מילים לא מוכרות - נסה בעברית או באנגלית פשוטה") + "\n\n")
+        tool_reply = answer_with_tools(user_text, tok)
+        if tool_reply:
+            log_write("ai_lbl",  "AI:    ")
+            log_write("ai_text", fix_rtl(tool_reply) + "\n\n")
             return
 
+        # בנה פרומפט בפורמט שהמודל מכיר
+        prompt = f"user : {user_text} model :"
         tokens = tok.clean(user_text)
         unk_token = tok.word2idx["<UNK>"]
         unknown_count = sum(tok.word2idx.get(w, unk_token) == unk_token for w in tokens)
-        if tokens and unknown_count == len(tokens):
-            reply = "אני עדיין לא מכיר את המילים האלה. נסה שאלה פשוטה יותר."
+        if tokens and unknown_count / len(tokens) > 0.35:
+            reply = unknown_answer(user_text)
         else:
             reply = generate(model, tok, prompt,
                              n_words=words_var.get(),
