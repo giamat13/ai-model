@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+.venv/
+
+# מודל מאומן (קבצים כבדים — לא מועלים ל-git)
+model.npz
+tokenizer.json
+
+# IDE
+.vscode/settings.json
+.DS_Store
