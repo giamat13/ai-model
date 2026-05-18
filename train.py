@@ -1,18 +1,20 @@
 """
-train.py — לולאת אימון מלאה
+train.py — לולאת אימון מלאה עם זיהוי שינויים
 
-מה קורה כאן:
-  1. טוענים את הנתונים מה-JSON
-  2. בונים Tokenizer
-  3. מכינים דוגמאות: כל "חלון" של מילים + המילה הבאה שלו
-  4. מריצים epochs — בכל epoch עוברים על כל הדוגמאות
-  5. מציגים את ה-loss ודוגמת יצירה כל כמה צעדים
+אימון מצטבר:
+  • בכל הרצה מחשבים hash לכל article בנתונים.
+  • article שכבר אומן ולא השתנה — מדלג עליו.
+  • article חדש או ששונה — מאמן עליו בלבד.
+  • אם אין שינויים כלל — לא מאמן בכתב (0 אפוקים), פשוט ממשיך.
+  • המצב נשמר בקובץ trained_hashes.json לצד המודל.
 """
 
+import hashlib
 import json
 import os
 import sys
 import time
+
 import numpy as np
 
 from tokenizer import Tokenizer
@@ -24,47 +26,84 @@ if hasattr(sys.stdout, "reconfigure"):
 
 
 # ════════════════════════════════════════════════════════════════
-#  הגדרות אימון — שנה כאן כדי להתנסות
+#  הגדרות אימון
 # ════════════════════════════════════════════════════════════════
 
-import os
-_HERE       = os.path.dirname(os.path.abspath(__file__))
-DATA_PATH   = os.path.join(_HERE, "training_data.json")
+_HERE         = os.path.dirname(os.path.abspath(__file__))
+DATA_PATH     = os.path.join(_HERE, "training_data.json")
 API_DATA_PATH = os.path.join(_HERE, "api_training_data.json")
-DATA_PATHS  = [DATA_PATH, API_DATA_PATH]
-SAVE_DIR    = _HERE
+DATA_PATHS    = [DATA_PATH, API_DATA_PATH]
+SAVE_DIR      = _HERE
+HASHES_PATH   = os.path.join(SAVE_DIR, "trained_hashes.json")
 
-CONTEXT_LEN = int(os.environ.get("CONTEXT_LEN", "5"))       # כמה מילים אחורה המודל רואה
-EMBED_DIM   = int(os.environ.get("EMBED_DIM", "64"))        # מימד ה-embedding לכל מילה
-HIDDEN_DIM  = int(os.environ.get("HIDDEN_DIM", "128"))      # נוירונים בשכבה הנסתרת
-EPOCHS      = int(os.environ.get("EPOCHS", "120"))          # כמה פעמים לעבור על כל הנתונים
-LR          = float(os.environ.get("LR", "0.01"))           # learning rate
-LOG_EVERY   = int(os.environ.get("LOG_EVERY", "10"))        # כל כמה epochs להדפיס דוגמה
+CONTEXT_LEN = int(os.environ.get("CONTEXT_LEN", "5"))
+EMBED_DIM   = int(os.environ.get("EMBED_DIM",   "64"))
+HIDDEN_DIM  = int(os.environ.get("HIDDEN_DIM",  "128"))
+EPOCHS      = int(os.environ.get("EPOCHS",      "120"))
+LR          = float(os.environ.get("LR",        "0.01"))
+LOG_EVERY   = int(os.environ.get("LOG_EVERY",   "10"))
+
+
+# ════════════════════════════════════════════════════════════════
+#  ניהול Hashes — מה כבר אומן
+# ════════════════════════════════════════════════════════════════
+
+def article_hash(article: dict) -> str:
+    """hash יחיד לכל article — מבוסס על id + תוכן הטקסט."""
+    raw = f"{article.get('id', '')}|{article.get('text', '')}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+
+
+def load_trained_hashes() -> dict[str, str]:
+    """טוען את המילון {article_id → hash} שנשמר בסוף האימון האחרון."""
+    if not os.path.exists(HASHES_PATH):
+        return {}
+    with open(HASHES_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_trained_hashes(hashes: dict[str, str]) -> None:
+    with open(HASHES_PATH, "w", encoding="utf-8") as f:
+        json.dump(hashes, f, ensure_ascii=False, indent=2)
+
+
+def find_changed_articles(
+    all_articles: list[dict],
+    trained: dict[str, str],
+) -> tuple[list[dict], list[dict]]:
+    """
+    מחזיר (changed, unchanged).
+    changed   = חדש לגמרי, או ה-text/id שלו השתנה.
+    unchanged = hash זהה לזה שנשמר → לא צריך לאמן.
+    """
+    changed, unchanged = [], []
+    for art in all_articles:
+        aid  = art.get("id", "")
+        h    = article_hash(art)
+        if trained.get(aid) == h:
+            unchanged.append(art)
+        else:
+            changed.append(art)
+    return changed, unchanged
 
 
 # ════════════════════════════════════════════════════════════════
 #  טעינת נתונים
 # ════════════════════════════════════════════════════════════════
 
-def load_texts(paths: list[str]) -> list[str]:
-    texts = []
-    loaded_files = []
-
+def load_all_articles(paths: list[str]) -> list[dict]:
+    articles = []
     for path in paths:
         if not os.path.exists(path):
             continue
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        file_texts = [a["text"] for a in data.get("articles", []) if a.get("text")]
-        texts.extend(file_texts)
-        loaded_files.append((os.path.basename(path), len(file_texts)))
-
-    if not texts:
+        batch = [a for a in data.get("articles", []) if a.get("text")]
+        articles.extend(batch)
+        print(f"[Data] נטען {os.path.basename(path)}: {len(batch)} פריטים")
+    if not articles:
         raise FileNotFoundError("לא נמצאו קבצי דאטה לאימון")
-
-    summary = ", ".join(f"{name}: {count}" for name, count in loaded_files)
-    print(f"[Data] נטענו {len(texts)} פריטים ({summary})")
-    return texts
+    return articles
 
 
 # ════════════════════════════════════════════════════════════════
@@ -74,33 +113,18 @@ def load_texts(paths: list[str]) -> list[str]:
 def make_samples(
     tok: Tokenizer, texts: list[str], context_len: int
 ) -> list[tuple[np.ndarray, int]]:
-    """
-    ממיר טקסטים לדוגמאות (context → next_word).
-    
-    לדוגמה עם context_len=3:
-      טקסט: [2, 5, 8, 11, 4, 9]   (אחרי encode)
-      דוגמאות:
-        ([2, 5, 8], 11)
-        ([5, 8, 11], 4)
-        ([8, 11, 4], 9)
-    """
     samples = []
     pad_id  = tok.word2idx["<PAD>"]
-
     for text in texts:
         ids = tok.encode(text, add_special=True)
         if len(ids) <= context_len:
             continue
-
         for i in range(len(ids) - context_len):
             ctx    = np.array(ids[i : i + context_len])
             target = ids[i + context_len]
-            # דלג על דוגמאות שהמטרה שלהן היא PAD
             if target == pad_id:
                 continue
             samples.append((ctx, target))
-
-    print(f"[Data] דוגמאות אימון: {len(samples):,}")
     return samples
 
 
@@ -109,52 +133,27 @@ def make_samples(
 # ════════════════════════════════════════════════════════════════
 
 def generate(
-    model:       MiniLM,
-    tok:         Tokenizer,
-    seed_text:   str,
-    n_words:     int = 12,
-    temperature: float = 0.8,
+    model: MiniLM, tok: Tokenizer,
+    seed_text: str, n_words: int = 12, temperature: float = 0.8,
 ) -> str:
-    """
-    מקבל מילה/ביטוי ומייצר המשך.
-    
-    temperature:
-      • גבוה (>1) → יצירתי יותר, פחות צפוי
-      • נמוך (<1) → שמרני יותר, מילה נפוצה יותר
-      • 1.0       → הסתברויות ישירות מהמודל
-    """
     pad_id = tok.word2idx["<PAD>"]
     bos_id = tok.word2idx["<BOS>"]
     eos_id = tok.word2idx["<EOS>"]
 
-    # קידוד הבסיס
-    base_ids = tok.encode(seed_text, add_special=False)
-    if not base_ids:
-        base_ids = [bos_id]
-
-    # ריפוד/חיתוך לאורך הנכון
+    base_ids = tok.encode(seed_text, add_special=False) or [bos_id]
     ctx = base_ids[-model.context_len:]
     while len(ctx) < model.context_len:
         ctx = [pad_id] + ctx
 
     generated = list(base_ids)
-
     for _ in range(n_words):
-        ctx_arr = np.array(ctx)
-        probs   = model.forward(ctx_arr)
-
-        # החלת temperature
+        probs   = model.forward(np.array(ctx))
         logits  = np.log(probs + 1e-9) / temperature
         logits -= logits.max()
-        probs   = np.exp(logits)
-        probs  /= probs.sum()
-
-        # דגימה מהתפלגות (לא רק argmax — מגוון יותר)
+        probs   = np.exp(logits); probs /= probs.sum()
         next_id = np.random.choice(len(probs), p=probs)
-
         if next_id == eos_id:
             break
-
         generated.append(next_id)
         ctx = ctx[1:] + [next_id]
 
@@ -162,48 +161,101 @@ def generate(
 
 
 # ════════════════════════════════════════════════════════════════
+#  טעינת מודל קיים (להמשך אימון)
+# ════════════════════════════════════════════════════════════════
+
+def load_existing_model(tok: Tokenizer) -> MiniLM | None:
+    model_path = os.path.join(SAVE_DIR, "model.npz")
+    if not os.path.exists(model_path):
+        return None
+    data   = np.load(model_path, allow_pickle=True)
+    config = data["config"]
+    vocab_size, embed_dim, hidden_dim, context_len = (
+        int(config[0]), int(config[1]), int(config[2]), int(config[3])
+    )
+    # אם ה-vocab גדל (נוספו מילים) — אי אפשר לטעון, צריך אימון מחדש
+    if vocab_size != tok.vocab_size:
+        print(f"[Train] vocab השתנה ({vocab_size} → {tok.vocab_size}) — אימון מחדש.")
+        return None
+    model = MiniLM(vocab_size, embed_dim, hidden_dim, context_len)
+    model.E  = data["E"];  model.W1 = data["W1"];  model.b1 = data["b1"]
+    model.W2 = data["W2"]; model.b2 = data["b2"]
+    return model
+
+
+# ════════════════════════════════════════════════════════════════
+#  שמירת מודל
+# ════════════════════════════════════════════════════════════════
+
+def save_model(model: MiniLM, tok: Tokenizer) -> None:
+    model_path = os.path.join(SAVE_DIR, "model.npz")
+    np.savez(
+        model_path,
+        E=model.E, W1=model.W1, b1=model.b1, W2=model.W2, b2=model.b2,
+        config=np.array([tok.vocab_size, model.embed_dim, model.hidden_dim, model.context_len]),
+    )
+    print(f"[Train] מודל נשמר → {model_path}")
+
+
+# ════════════════════════════════════════════════════════════════
 #  לולאת אימון ראשית
 # ════════════════════════════════════════════════════════════════
 
-def train():
+def train() -> tuple | None:
     print("=" * 56)
-    print("  🧠  אימון מודל שפה זעיר — NumPy בלבד")
+    print("  🧠  אימון מצטבר — מאמן רק שינויים")
     print("=" * 56)
 
-    # ── 1. נתונים ───────────────────────────────────────────────
-    texts = load_texts(DATA_PATHS)
+    # ── 1. טעינת כל הנתונים ─────────────────────────────────────
+    all_articles = load_all_articles(DATA_PATHS)
+    trained      = load_trained_hashes()
 
-    # ── 2. Tokenizer ────────────────────────────────────────────
+    # ── 2. זיהוי מה השתנה ──────────────────────────────────────
+    changed, unchanged = find_changed_articles(all_articles, trained)
+    print(f"[Delta] ללא שינוי: {len(unchanged)}  |  חדש/שונה: {len(changed)}")
+
+    if not changed:
+        print("[Train] אין שינויים — מדלג על אימון. ✅")
+        # מחזירים None כסימן שלא אומן דבר
+        return None
+
+    # ── 3. Tokenizer — תמיד נבנה מכל הנתונים (לשמור vocab עקבי) ─
     tok = Tokenizer()
-    tok.build_vocab(texts, min_freq=1)
-    tok.save(f"{SAVE_DIR}/tokenizer.json")
+    tok.build_vocab([a["text"] for a in all_articles], min_freq=1)
+    tok.save(os.path.join(SAVE_DIR, "tokenizer.json"))
 
-    # ── 3. דוגמאות ──────────────────────────────────────────────
-    samples = make_samples(tok, texts, CONTEXT_LEN)
-    if not samples:
-        print("❌ אין דוגמאות! בדוק את הנתונים.")
-        return
-
-    # ── 4. מודל ─────────────────────────────────────────────────
+    # ── 4. מודל — טוען קיים או יוצר חדש ────────────────────────
     np.random.seed(42)
-    model = MiniLM(
-        vocab_size  = tok.vocab_size,
-        embed_dim   = EMBED_DIM,
-        hidden_dim  = HIDDEN_DIM,
-        context_len = CONTEXT_LEN,
-    )
+    model = load_existing_model(tok)
+    if model is None:
+        print("[Train] יוצר מודל חדש.")
+        model = MiniLM(
+            vocab_size  = tok.vocab_size,
+            embed_dim   = EMBED_DIM,
+            hidden_dim  = HIDDEN_DIM,
+            context_len = CONTEXT_LEN,
+        )
+    else:
+        print(f"[Train] ממשיך אימון על מודל קיים ({model.num_params():,} פרמטרים).")
+
     print(f"\n{model}\n")
 
-    # ── 5. אימון ────────────────────────────────────────────────
-    print(f"{'Epoch':>6}  {'Loss':>8}  {'זמן':>6}  {'דוגמה'}")
+    # ── 5. דוגמאות — רק מה שהשתנה ──────────────────────────────
+    changed_texts = [a["text"] for a in changed]
+    samples = make_samples(tok, changed_texts, CONTEXT_LEN)
+    if not samples:
+        print("[Train] לא נוצרו דוגמאות מהשינויים.")
+        return None
+
+    print(f"[Data] דוגמאות אימון (מהשינויים): {len(samples):,}")
+
+    # ── 6. לולאת אימון על הנתונים החדשים/שונים ─────────────────
+    print(f"\n{'Epoch':>6}  {'Loss':>8}  {'זמן':>6}  {'דוגמה'}")
     print("-" * 56)
 
     loss_history = []
-
     for epoch in range(1, EPOCHS + 1):
         t0 = time.time()
-
-        # ערבוב דוגמאות בכל epoch (SGD אקראי)
         np.random.shuffle(samples)
 
         epoch_loss = 0.0
@@ -218,38 +270,33 @@ def train():
         loss_history.append(avg_loss)
         elapsed  = time.time() - t0
 
-        # הדפסת התקדמות
         if epoch % LOG_EVERY == 0 or epoch == 1:
             seed   = "User: שלום Model:"
             sample = generate(model, tok, seed, n_words=8, temperature=0.7)
             print(f"{epoch:>6}  {avg_loss:>8.4f}  {elapsed:>5.1f}s  \"{sample}\"")
 
-    # ── 6. שמירת מודל ───────────────────────────────────────────
-    model_path = f"{SAVE_DIR}/model.npz"
-    np.savez(
-        model_path,
-        E=model.E, W1=model.W1, b1=model.b1, W2=model.W2, b2=model.b2,
-        config=np.array([
-            tok.vocab_size, EMBED_DIM, HIDDEN_DIM, CONTEXT_LEN
-        ])
-    )
-    print(f"\n✅ מודל נשמר → {model_path}")
-    print(f"📉 Loss התחלתי: {loss_history[0]:.4f}  →  סופי: {loss_history[-1]:.4f}")
+    # ── 7. שמירה ─────────────────────────────────────────────────
+    save_model(model, tok)
 
-    # ── 7. כמה דוגמאות סיום ─────────────────────────────────────
+    # עדכן hashes — כל מה שנמצא כרגע (כולל unchanged) מעודכן
+    new_hashes = {a["id"]: article_hash(a) for a in all_articles if a.get("id")}
+    save_trained_hashes(new_hashes)
+    print(f"[Train] hashes נשמרו ({len(new_hashes)} articles).")
+
+    print(f"\n✅ Loss ראשוני: {loss_history[0]:.4f}  →  סופי: {loss_history[-1]:.4f}")
+
+    # ── 8. דוגמאות סיום ─────────────────────────────────────────
     print("\n" + "=" * 56)
     print("  🎤  דוגמאות יצירה אחרי אימון")
     print("=" * 56)
-    seeds = [
+    for seed in [
         "User: שלום Model:",
         "User: Hello Model:",
         "User: מה זה ביולוגיה Model:",
         "User: what is mathematics Model:",
-        "User: מה זה רשת נוירונים Model:",
-    ]
-    for seed in seeds:
+    ]:
         out = generate(model, tok, seed, n_words=10, temperature=0.8)
-        print(f"  {seed:>8} →  {out}")
+        print(f"  {seed} →  {out}")
 
     return model, tok, loss_history
 

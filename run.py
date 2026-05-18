@@ -1,8 +1,10 @@
 """
-run.py — מאמן אם צריך, ואז פותח את הצ'אט.
+run.py — מאמן אם יש שינויים, ואז פותח את הצ'אט.
 
-הרצה:
-    python run.py
+בכל הרצה:
+  1. train() רץ — אם אין שינויים בנתונים הוא מדלג מיידית (אפס עלות זמן).
+  2. אם יש שינויים — מאמן רק עליהם, מעדכן המודל הקיים.
+  3. פותח GUI.
 """
 
 import os
@@ -12,19 +14,31 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
+_HERE      = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(_HERE, "model.npz")
 TOK_PATH   = os.path.join(_HERE, "tokenizer.json")
 
 
-def need_training() -> bool:
-    return not os.path.exists(MODEL_PATH) or not os.path.exists(TOK_PATH)
+def has_base_model() -> bool:
+    return os.path.exists(MODEL_PATH) and os.path.exists(TOK_PATH)
 
 
-def train():
-    from train import train as train_model
-
-    train_model()
+def run_train():
+    """
+    תמיד קורא ל-train().
+    אם אין שינויים בנתונים — train() מחזיר None ומסיים תוך שנייה.
+    אם יש שינויים — מאמן רק אותם ומעדכן model.npz.
+    """
+    from train import train
+    result = train()
+    if result is None and not has_base_model():
+        # מצב קצה: אין שינויים אבל גם אין מודל כלל — מאמן הכל
+        print("[Run] לא נמצא מודל ואין שינויים לאמן — בודק שוב...")
+        # מוחק hashes כדי לכפות אימון מלא
+        hashes_path = os.path.join(_HERE, "trained_hashes.json")
+        if os.path.exists(hashes_path):
+            os.remove(hashes_path)
+        train()
 
 
 def chat():
@@ -35,7 +49,7 @@ def chat():
     from model     import MiniLM
     from assistant_tools import answer_with_tools, unknown_answer
 
-    # טעינה
+    # ── טעינה ──────────────────────────────────────────────────
     tok = Tokenizer()
     tok.load(TOK_PATH)
     data   = np.load(MODEL_PATH, allow_pickle=True)
@@ -48,7 +62,7 @@ def chat():
     model.W2 = data["W2"]; model.b2 = data["b2"]
     print(f"מודל נטען — {model.num_params():,} פרמטרים, vocab {tok.vocab_size}")
 
-    # RTL fix
+    # ── RTL fix ─────────────────────────────────────────────────
     def has_hebrew(text):
         return any("\u0590" <= ch <= "\u05FF" for ch in text)
 
@@ -58,7 +72,7 @@ def chat():
             for line in text.split("\n")
         )
 
-    # יצירת טקסט
+    # ── יצירת טקסט ──────────────────────────────────────────────
     def generate(user_text, n_words, temperature):
         pad_id = tok.word2idx["<PAD>"]
         bos_id = tok.word2idx["<BOS>"]
@@ -88,7 +102,7 @@ def chat():
             return reply
         return full
 
-    # GUI
+    # ── GUI ──────────────────────────────────────────────────────
     root = tk.Tk()
     root.title("Mini Hebrew/English AI")
     root.geometry("680x540")
@@ -118,7 +132,6 @@ def chat():
     log_write("hint", "אפשר לכתוב בעברית או באנגלית\n")
     log_write("hint", "─" * 55 + "\n\n")
 
-    # sliders
     ctrl = tk.Frame(root, bg="#181825", pady=4)
     ctrl.pack(fill=tk.X, padx=10, pady=(4, 0))
     tk.Label(ctrl, text="Words:", bg="#181825", fg="#6c7086",
@@ -134,7 +147,6 @@ def chat():
              orient=tk.HORIZONTAL, length=110, bg="#181825", fg="#cdd6f4",
              troughcolor="#313244", highlightthickness=0, relief=tk.FLAT).pack(side=tk.LEFT)
 
-    # input
     input_frame = tk.Frame(root, bg="#313244")
     input_frame.pack(fill=tk.X, padx=10, pady=8)
     entry = tk.Entry(input_frame, bg="#1e1e2e", fg="#ffffff",
@@ -176,14 +188,14 @@ def chat():
     root.mainloop()
 
 
-# ══════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════
 if __name__ == "__main__":
-    if need_training():
-        print("לא נמצא מודל — מתחיל אימון...\n")
-        train()
-    else:
-        print("מודל קיים — מדלג על אימון.")
-        print("(למחוק model.npz ו-tokenizer.json כדי לאמן מחדש)\n")
+    print("בודק שינויים בנתונים...")
+    run_train()
 
-    print("פותח צ'אט...")
+    if not has_base_model():
+        print("❌ לא נוצר מודל — בדוק שקיים training_data.json")
+        sys.exit(1)
+
+    print("\nפותח צ'אט...")
     chat()
