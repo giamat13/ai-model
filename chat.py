@@ -13,13 +13,29 @@ from model     import MiniLM
 _HERE = os.path.dirname(os.path.abspath(__file__))
 
 
+# ── תיקון RTL: הופך סדר מילים בעברית ──────────────────────────────────────
+def fix_rtl(text: str) -> str:
+    """
+    tkinter ב-Windows לא תומך ב-RTL.
+    הפתרון: להפוך את סדר המילים בכל שורה.
+    """
+    lines = text.split("\n")
+    fixed = []
+    for line in lines:
+        words = line.split()
+        fixed.append(" ".join(reversed(words)) if words else "")
+    return "\n".join(fixed)
+
+
+# ══════════════════════════════════════════════════════
+#  טעינת מודל
+# ══════════════════════════════════════════════════════
+
 def load_model():
     tok_path   = os.path.join(_HERE, "tokenizer.json")
     model_path = os.path.join(_HERE, "model.npz")
-
     tok = Tokenizer()
     tok.load(tok_path)
-
     data   = np.load(model_path, allow_pickle=True)
     config = data["config"]
     vocab_size, embed_dim, hidden_dim, context_len = (
@@ -34,12 +50,16 @@ def load_model():
     return model, tok
 
 
-def generate(model, tok, seed_text, n_words, temperature):
+# ══════════════════════════════════════════════════════
+#  יצירת טקסט
+# ══════════════════════════════════════════════════════
+
+def generate(model, tok, prompt, n_words, temperature):
     pad_id = tok.word2idx["<PAD>"]
     bos_id = tok.word2idx["<BOS>"]
     eos_id = tok.word2idx["<EOS>"]
 
-    base_ids = tok.encode(seed_text, add_special=False)
+    base_ids = tok.encode(prompt, add_special=False)
     if not base_ids:
         base_ids = [bos_id]
 
@@ -60,32 +80,47 @@ def generate(model, tok, seed_text, n_words, temperature):
         generated.append(next_id)
         ctx = ctx[1:] + [next_id]
 
-    return tok.decode(generated, skip_special=True)
+    full = tok.decode(generated, skip_special=True)
+    marker = "model :"
+    idx = full.find(marker)
+    if idx != -1:
+        reply = full[idx + len(marker):].strip()
+        if "user :" in reply:
+            reply = reply[:reply.index("user :")].strip()
+        return reply
+    return full
 
+
+# ══════════════════════════════════════════════════════
+#  GUI
+# ══════════════════════════════════════════════════════
 
 def main():
     print("Loading model...")
     model, tok = load_model()
-    print(f"Model loaded — {model.num_params():,} params, vocab {tok.vocab_size}")
+    print(f"Ready — {model.num_params():,} params")
 
     root = tk.Tk()
-    root.title("Mini Language Model Chat")
-    root.geometry("640x520")
+    root.title("Mini Hebrew AI - Chat")
+    root.geometry("680x540")
     root.configure(bg="#1e1e2e")
+    root.resizable(True, True)
 
-    # chat log
+    # ── chat log ──
     log = scrolledtext.ScrolledText(
         root, state=tk.DISABLED,
         bg="#11111b", fg="#cdd6f4",
         font=("Consolas", 12),
-        relief=tk.FLAT, bd=8,
-        wrap=tk.WORD,
+        relief=tk.FLAT, bd=0,
+        wrap=tk.WORD, padx=10, pady=10,
     )
-    log.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-    log.tag_config("you",   foreground="#89b4fa", font=("Consolas", 12, "bold"))
-    log.tag_config("model", foreground="#a6e3a1", font=("Consolas", 12, "bold"))
-    log.tag_config("text",  foreground="#cdd6f4", font=("Consolas", 12))
-    log.tag_config("hint",  foreground="#585b70", font=("Consolas", 11))
+    log.pack(fill=tk.BOTH, expand=True, padx=10, pady=(10, 0))
+    log.tag_config("you_lbl",  foreground="#89b4fa", font=("Consolas", 11, "bold"))
+    log.tag_config("you_text", foreground="#cdd6f4", font=("Consolas", 12))
+    log.tag_config("ai_lbl",   foreground="#a6e3a1", font=("Consolas", 11, "bold"))
+    log.tag_config("ai_text",  foreground="#ffffff", font=("Consolas", 12))
+    log.tag_config("hint",     foreground="#585b70", font=("Consolas", 10))
+    log.tag_config("divider",  foreground="#313244", font=("Consolas", 8))
 
     def log_write(tag, text):
         log.config(state=tk.NORMAL)
@@ -93,76 +128,92 @@ def main():
         log.config(state=tk.DISABLED)
         log.see(tk.END)
 
-    log_write("hint", "Model ready. Type a Hebrew word and press Send.\n")
-    log_write("hint", "Try: bina / reshet / limud / makhshev / neuron\n\n")
+    log_write("hint",    "Mini Hebrew AI - powered by NumPy only\n")
+    log_write("hint",    "Type anything in Hebrew and press Enter\n")
+    log_write("divider", "─" * 60 + "\n\n")
 
-    # sliders
-    sliders_frame = tk.Frame(root, bg="#1e1e2e")
-    sliders_frame.pack(fill=tk.X, padx=10)
+    # ── sliders ──
+    ctrl = tk.Frame(root, bg="#181825", pady=4)
+    ctrl.pack(fill=tk.X, padx=10, pady=(4, 0))
 
-    tk.Label(sliders_frame, text="Words:", bg="#1e1e2e", fg="#585b70",
-             font=("Consolas", 10)).pack(side=tk.LEFT)
-    words_var = tk.IntVar(value=12)
-    tk.Scale(sliders_frame, from_=4, to=40, variable=words_var,
-             orient=tk.HORIZONTAL, length=100,
-             bg="#1e1e2e", fg="#cdd6f4", troughcolor="#313244",
+    tk.Label(ctrl, text="Words:", bg="#181825", fg="#6c7086",
+             font=("Consolas", 10)).pack(side=tk.LEFT, padx=(6, 2))
+    words_var = tk.IntVar(value=14)
+    tk.Scale(ctrl, from_=4, to=40, variable=words_var,
+             orient=tk.HORIZONTAL, length=90, showvalue=True,
+             bg="#181825", fg="#cdd6f4", troughcolor="#313244",
              highlightthickness=0, relief=tk.FLAT,
-             font=("Consolas", 9)).pack(side=tk.LEFT, padx=(2, 16))
+             font=("Consolas", 9)).pack(side=tk.LEFT, padx=(0, 12))
 
-    tk.Label(sliders_frame, text="Creativity:", bg="#1e1e2e", fg="#585b70",
-             font=("Consolas", 10)).pack(side=tk.LEFT)
-    temp_var = tk.DoubleVar(value=0.8)
-    tk.Scale(sliders_frame, from_=0.1, to=2.0, resolution=0.1,
-             variable=temp_var, orient=tk.HORIZONTAL, length=120,
-             bg="#1e1e2e", fg="#cdd6f4", troughcolor="#313244",
+    tk.Label(ctrl, text="Creativity:", bg="#181825", fg="#6c7086",
+             font=("Consolas", 10)).pack(side=tk.LEFT, padx=(0, 2))
+    temp_var = tk.DoubleVar(value=0.6)
+    tk.Scale(ctrl, from_=0.1, to=2.0, resolution=0.1,
+             variable=temp_var, orient=tk.HORIZONTAL, length=110, showvalue=True,
+             bg="#181825", fg="#cdd6f4", troughcolor="#313244",
              highlightthickness=0, relief=tk.FLAT,
-             font=("Consolas", 9)).pack(side=tk.LEFT, padx=2)
+             font=("Consolas", 9)).pack(side=tk.LEFT)
 
-    # input row
-    input_frame = tk.Frame(root, bg="#45475a", pady=2)
-    input_frame.pack(fill=tk.X, padx=10, pady=10)
+    # ── input row ──
+    input_frame = tk.Frame(root, bg="#313244")
+    input_frame.pack(fill=tk.X, padx=10, pady=8)
 
     entry = tk.Entry(
         input_frame,
         bg="#1e1e2e", fg="#ffffff",
-        insertbackground="#ffffff",
+        insertbackground="#89b4fa",
         font=("Consolas", 14),
-        relief=tk.SUNKEN, bd=3,
+        relief=tk.FLAT, bd=0,
     )
-    entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=7, padx=4, pady=4)
+    entry.pack(side=tk.LEFT, fill=tk.X, expand=True,
+               ipady=9, padx=(10, 4), pady=4)
     entry.focus_force()
 
     def send(event=None):
-        text = entry.get().strip()
-        if not text:
+        user_text = entry.get().strip()
+        if not user_text:
             return
         entry.delete(0, tk.END)
 
-        log_write("you",  "You:   ")
-        log_write("text", text + "\n")
+        # הצג שאלת משתמש — הפוך RTL
+        log_write("you_lbl",  "You:   ")
+        log_write("you_text", fix_rtl(user_text) + "\n")
 
-        known = [w for w in tok.clean(text) if w in tok.word2idx]
-        if not known:
-            log_write("hint", "       (word not in vocabulary)\n\n")
+        # בנה פרומפט בפורמט שהמודל מכיר
+        prompt = f"user : {user_text} model :"
+        known  = [w for w in tok.clean(prompt) if w in tok.word2idx]
+        if len(known) < 2:
+            log_write("hint",
+                "AI:    " + fix_rtl("מילה לא מוכרת — נסה: שלום / מה זה / מי אתה") + "\n\n")
             return
 
-        result = generate(model, tok, text,
-                          n_words=words_var.get(),
-                          temperature=temp_var.get())
+        tokens = tok.clean(user_text)
+        unk_token = tok.word2idx["<UNK>"]
+        unknown_count = sum(tok.word2idx.get(w, unk_token) == unk_token for w in tokens)
+        if tokens and unknown_count == len(tokens):
+            reply = "אני לא יודע אם צריך."
+        else:
+            reply = generate(model, tok, prompt,
+                             n_words=words_var.get(),
+                             temperature=temp_var.get())
 
-        log_write("model", "Model: ")
-        log_write("text",  result + "\n\n")
+        if not reply:
+            reply = "..."
+
+        # הצג תשובה — הפוך RTL
+        log_write("ai_lbl",  "AI:    ")
+        log_write("ai_text", fix_rtl(reply) + "\n\n")
 
     entry.bind("<Return>", send)
 
     tk.Button(
-        input_frame, text="Send",
+        input_frame, text="Send  Enter",
         bg="#89b4fa", fg="#1e1e2e",
         activebackground="#74c7ec",
         font=("Consolas", 12, "bold"),
-        relief=tk.FLAT, bd=0, padx=14,
+        relief=tk.FLAT, bd=0, padx=16,
         command=send, cursor="hand2",
-    ).pack(side=tk.RIGHT, padx=(6, 0))
+    ).pack(side=tk.RIGHT, padx=(4, 8), pady=4, ipady=6)
 
     root.mainloop()
 

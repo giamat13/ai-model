@@ -2,15 +2,15 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "💬 Chat — שיחה עם המודל",
+      "name": "🚀 Run — אמן ופתח צ'אט",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/chat.py",
+      "program": "${workspaceFolder}/run.py",
       "console": "integratedTerminal",
       "justMyCode": true
     },
     {
-      "name": "🧠 Train — אימון מודל",
+      "name": "🧠 Train — אימון בלבד",
       "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/train.py",
@@ -18,18 +18,10 @@
       "justMyCode": true
     },
     {
-      "name": "🔤 Tokenizer — בדיקה",
+      "name": "💬 Chat — צ'אט בלבד",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/tokenizer.py",
-      "console": "integratedTerminal",
-      "justMyCode": true
-    },
-    {
-      "name": "🔬 Model — בדיקה",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/model.py",
+      "program": "${workspaceFolder}/chat.py",
       "console": "integratedTerminal",
       "justMyCode": true
     }

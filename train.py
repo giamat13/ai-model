@@ -27,11 +27,11 @@ _HERE       = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH   = os.path.join(_HERE, "training_data.json")
 SAVE_DIR    = _HERE
 
-CONTEXT_LEN = 4       # כמה מילים אחורה המודל רואה
+CONTEXT_LEN = 5       # כמה מילים אחורה המודל רואה
 EMBED_DIM   = 64      # מימד ה-embedding לכל מילה
 HIDDEN_DIM  = 128     # נוירונים בשכבה הנסתרת
-EPOCHS      = 60      # כמה פעמים לעבור על כל הנתונים
-LR          = 0.05    # learning rate
+EPOCHS      = 150      # כמה פעמים לעבור על כל הנתונים
+LR          = 0.08    # learning rate
 LOG_EVERY   = 10      # כל כמה epochs להדפיס דוגמה
 
 
@@ -200,7 +200,7 @@ def train():
 
         # הדפסת התקדמות
         if epoch % LOG_EVERY == 0 or epoch == 1:
-            seed   = "בינה"
+            seed   = "User: שלום Model:"
             sample = generate(model, tok, seed, n_words=8, temperature=0.7)
             print(f"{epoch:>6}  {avg_loss:>8.4f}  {elapsed:>5.1f}s  \"{sample}\"")
 
@@ -220,7 +220,7 @@ def train():
     print("\n" + "=" * 56)
     print("  🎤  דוגמאות יצירה אחרי אימון")
     print("=" * 56)
-    seeds = ["בינה", "רשת", "למידה", "מחשב", "נוירון"]
+    seeds = ["User: שלום Model:", "User: מי אתה Model:", "User: מה זה בינה מלאכותית Model:", "User: תודה Model:", "User: מה זה רשת נוירונים Model:"]
     for seed in seeds:
         out = generate(model, tok, seed, n_words=10, temperature=0.8)
         print(f"  {seed:>8} →  {out}")
