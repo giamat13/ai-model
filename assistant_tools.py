@@ -13,6 +13,7 @@ from __future__ import annotations
 import ast
 import math
 import operator
+import os
 import re
 import sys
 import time
@@ -20,11 +21,23 @@ import urllib.parse
 import urllib.request
 import urllib.error
 import json
+from dataclasses import dataclass
 from typing import Any
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+SOURCES_DIR = os.path.join(_HERE, "sources")
+SOURCE_CACHE: list["SourceDocument"] | None = None
+
+
+@dataclass
+class SourceDocument:
+    path: str
+    name: str
+    text: str
 
 
 UNKNOWN_HE = "אני לא יודע."
@@ -47,6 +60,86 @@ def token_confidence(user_text: str, tok: Any) -> float:
     unk_id = tok.word2idx.get("<UNK>")
     known = sum(1 for token in tokens if tok.word2idx.get(token, unk_id) != unk_id)
     return known / len(tokens)
+
+
+def normalize_text(text: str) -> str:
+    lowered = text.lower()
+    lowered = re.sub(r"[^\w\u0590-\u05FF]+", " ", lowered)
+    lowered = re.sub(r"\s+", " ", lowered).strip()
+    return lowered
+
+
+def load_source_documents() -> list[SourceDocument]:
+    global SOURCE_CACHE
+    if SOURCE_CACHE is not None:
+        return SOURCE_CACHE
+    docs: list[SourceDocument] = []
+    if os.path.isdir(SOURCES_DIR):
+        for filename in sorted(os.listdir(SOURCES_DIR)):
+            if not filename.endswith(".txt"):
+                continue
+            path = os.path.join(SOURCES_DIR, filename)
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    text = f.read().strip()
+            except OSError:
+                continue
+            if text:
+                docs.append(SourceDocument(path=path, name=filename[:-4], text=text))
+    SOURCE_CACHE = docs
+    return docs
+
+
+def score_source_document(query: str, doc: SourceDocument) -> float:
+    query_norm = normalize_text(query)
+    doc_norm = normalize_text(doc.name + " " + doc.text)
+    if not query_norm or not doc_norm:
+        return 0.0
+    query_tokens = set(query_norm.split())
+    doc_tokens = set(doc_norm.split())
+    overlap = len(query_tokens & doc_tokens)
+    score = float(overlap)
+    if query_norm in doc_norm:
+        score += 4.0
+    if doc.name and normalize_text(doc.name) in query_norm:
+        score += 5.0
+    for token in query_tokens:
+        if len(token) >= 4 and token in doc_norm:
+            score += 0.5
+    return score
+
+
+def lookup_local_source(text: str) -> str | None:
+    docs = load_source_documents()
+    if not docs:
+        return None
+    best_doc = None
+    best_score = 0.0
+    for doc in docs:
+        score = score_source_document(text, doc)
+        if score > best_score:
+            best_score = score
+            best_doc = doc
+    if not best_doc or best_score < 2.0:
+        return None
+
+    lines = [line.strip() for line in best_doc.text.splitlines() if line.strip()]
+    if not lines:
+        return None
+
+    important_lines = []
+    query_norm = normalize_text(text)
+    for line in lines:
+        line_norm = normalize_text(line)
+        if any(token in line_norm for token in query_norm.split() if len(token) >= 3):
+            important_lines.append(line)
+
+    excerpt = " ".join(important_lines[:3]) if important_lines else " ".join(lines[:3])
+    excerpt = re.sub(r"\s+", " ", excerpt).strip()
+    if not excerpt:
+        return None
+    prefix = "לפי המקור המקומי:" if has_hebrew(text) else "According to the local source:"
+    return f"{prefix} {excerpt}"
 
 
 # ════════════════════════════════════════════════════════════════
@@ -401,12 +494,17 @@ def answer_with_tools(user_text: str, tok: Any) -> str | None:
     if calc:
         return calc
 
-    # 2. מחולל קוד — לפני ויקיפדיה!
+    # 2. מחולל קוד — לפני מקורות ידע
     code = generate_code(user_text)
     if code:
         return code
 
-    # 3. ויקיפדיה + אני לא יודע
+    # 3. מקור מקומי מ-sources/ — עדיפות על ויקיפדיה
+    local_source = lookup_local_source(user_text)
+    if local_source:
+        return local_source
+
+    # 4. ויקיפדיה + אני לא יודע
     topic = extract_topic(user_text)
     if should_use_external_lookup(user_text, tok):
         wiki = lookup_wikipedia(user_text)
