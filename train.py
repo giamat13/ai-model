@@ -29,12 +29,14 @@ if hasattr(sys.stdout, "reconfigure"):
 #  הגדרות אימון
 # ════════════════════════════════════════════════════════════════
 
-_HERE         = os.path.dirname(os.path.abspath(__file__))
-DATA_PATH     = os.path.join(_HERE, "training_data.json")
-API_DATA_PATH = os.path.join(_HERE, "api_training_data.json")
-DATA_PATHS    = [DATA_PATH, API_DATA_PATH]
-SAVE_DIR      = _HERE
-HASHES_PATH   = os.path.join(SAVE_DIR, "trained_hashes.json")
+_HERE           = os.path.dirname(os.path.abspath(__file__))
+DATA_PATH       = os.path.join(_HERE, "training_data.json")
+API_DATA_PATH   = os.path.join(_HERE, "api_training_data.json")
+FETCHED_PATH    = os.path.join(_HERE, "fetched_articles.json")
+SOURCES_DIR     = os.path.join(_HERE, "sources")
+DATA_PATHS      = [DATA_PATH, API_DATA_PATH, FETCHED_PATH]
+SAVE_DIR        = _HERE
+HASHES_PATH     = os.path.join(SAVE_DIR, "trained_hashes.json")
 
 CONTEXT_LEN = int(os.environ.get("CONTEXT_LEN", "5"))
 EMBED_DIM   = int(os.environ.get("EMBED_DIM",   "64"))
@@ -93,6 +95,7 @@ def find_changed_articles(
 
 def load_all_articles(paths: list[str]) -> list[dict]:
     articles = []
+    # טעינת JSON
     for path in paths:
         if not os.path.exists(path):
             continue
@@ -101,6 +104,23 @@ def load_all_articles(paths: list[str]) -> list[dict]:
         batch = [a for a in data.get("articles", []) if a.get("text")]
         articles.extend(batch)
         print(f"[Data] נטען {os.path.basename(path)}: {len(batch)} פריטים")
+    
+    # טעינת TXT מתקיית sources
+    if os.path.exists(SOURCES_DIR):
+        txt_files = [f for f in os.listdir(SOURCES_DIR) if f.endswith(".txt")]
+        for txt_file in txt_files:
+            txt_path = os.path.join(SOURCES_DIR, txt_file)
+            with open(txt_path, "r", encoding="utf-8") as f:
+                text = f.read().strip()
+            if text:
+                articles.append({
+                    "id": f"txt_source_{txt_file}",
+                    "text": text,
+                    "source": "txt_file",
+                    "topic": txt_file
+                })
+        print(f"[Data] נטענו {len(txt_files)} קבצי TXT מתקיית sources")
+    
     if not articles:
         raise FileNotFoundError("לא נמצאו קבצי דאטה לאימון")
     return articles
