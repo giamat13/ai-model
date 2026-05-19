@@ -3,6 +3,7 @@ chat.py — ממשק גרפי לשיחה עם המודל המאומן
 """
 
 import os
+import re
 import sys
 import tkinter as tk
 from tkinter import scrolledtext
@@ -19,16 +20,11 @@ if hasattr(sys.stdout, "reconfigure"):
 _HERE = os.path.dirname(os.path.abspath(__file__))
 
 
-# ── תיקון RTL: הופך סדר מילים רק בשורות עבריות ───────────────────────────
+# ── RTL fix ────────────────────────────────────────────────────────────────
 def has_hebrew(text: str) -> bool:
     return any("\u0590" <= ch <= "\u05FF" for ch in text)
 
-
 def fix_rtl(text: str) -> str:
-    """
-    tkinter ב-Windows לא תומך טוב ב-RTL.
-    אנגלית נשארת כמו שהיא כדי שהמודל יוכל לעבוד דו-לשונית.
-    """
     lines = text.split("\n")
     fixed = []
     for line in lines:
@@ -37,10 +33,31 @@ def fix_rtl(text: str) -> str:
     return "\n".join(fixed)
 
 
+# ── פיצול תשובה לחלקי טקסט וקוד ──────────────────────────────────────────
+def split_reply(text: str) -> list[tuple[str, str]]:
+    """
+    מחזיר רשימה של (סוג, תוכן):
+      ("text", "...")  — טקסט רגיל
+      ("code", "...")  — בלוק קוד (ללא backticks)
+    """
+    parts = []
+    pattern = re.compile(r"```(?:python)?\n?(.*?)```", re.DOTALL)
+    last = 0
+    for m in pattern.finditer(text):
+        before = text[last:m.start()]
+        if before.strip():
+            parts.append(("text", before))
+        parts.append(("code", m.group(1).rstrip()))
+        last = m.end()
+    tail = text[last:]
+    if tail.strip():
+        parts.append(("text", tail))
+    return parts if parts else [("text", text)]
+
+
 # ══════════════════════════════════════════════════════
 #  טעינת מודל
 # ══════════════════════════════════════════════════════
-
 def load_model():
     tok_path   = os.path.join(_HERE, "tokenizer.json")
     model_path = os.path.join(_HERE, "model.npz")
@@ -63,7 +80,6 @@ def load_model():
 # ══════════════════════════════════════════════════════
 #  יצירת טקסט
 # ══════════════════════════════════════════════════════
-
 def generate(model, tok, prompt, n_words, temperature):
     pad_id = tok.word2idx["<PAD>"]
     bos_id = tok.word2idx["<BOS>"]
@@ -104,7 +120,6 @@ def generate(model, tok, prompt, n_words, temperature):
 # ══════════════════════════════════════════════════════
 #  GUI
 # ══════════════════════════════════════════════════════
-
 def main():
     print("Loading model...")
     model, tok = load_model()
@@ -112,7 +127,7 @@ def main():
 
     root = tk.Tk()
     root.title("Mini Hebrew/English AI - Chat")
-    root.geometry("680x540")
+    root.geometry("700x580")
     root.configure(bg="#1e1e2e")
     root.resizable(True, True)
 
@@ -123,8 +138,11 @@ def main():
         font=("Consolas", 12),
         relief=tk.FLAT, bd=0,
         wrap=tk.WORD, padx=10, pady=10,
+        spacing3=2,
     )
     log.pack(fill=tk.BOTH, expand=True, padx=10, pady=(10, 0))
+
+    # ── טאגים לטקסט רגיל ──
     log.tag_config("you_lbl",  foreground="#89b4fa", font=("Consolas", 11, "bold"))
     log.tag_config("you_text", foreground="#cdd6f4", font=("Consolas", 12))
     log.tag_config("ai_lbl",   foreground="#a6e3a1", font=("Consolas", 11, "bold"))
@@ -137,6 +155,140 @@ def main():
         log.insert(tk.END, text, tag)
         log.config(state=tk.DISABLED)
         log.see(tk.END)
+
+    # ── הוספת בלוק קוד בתוך הלוג ──
+    def log_code_block(code: str):
+        """מוסיף קנבס קוד מעוצב inline בתוך ה-ScrolledText."""
+        log.config(state=tk.NORMAL)
+
+        lines      = code.split("\n")
+        line_count = len(lines)
+        max_chars  = max((len(l) for l in lines), default=40)
+
+        # גובה ורוחב הקנבס
+        ch   = ("Consolas", 11)
+        char_w = 8          # pixels per char (קירוב ל-Consolas 11)
+        char_h = 18         # pixels per line
+        pad_x  = 12
+        pad_y  = 8
+        canvas_w = max(500, min(max_chars * char_w + pad_x * 2, 640))
+        canvas_h = line_count * char_h + pad_y * 2 + 28  # +28 לשורת header
+
+        canvas = tk.Canvas(
+            log,
+            width=canvas_w, height=canvas_h,
+            bg="#1e1e2e", highlightthickness=1,
+            highlightbackground="#45475a",
+            relief=tk.FLAT, cursor="arrow",
+        )
+
+        # ── header bar ──
+        canvas.create_rectangle(0, 0, canvas_w, 26, fill="#181825", outline="")
+        canvas.create_oval(10, 8, 20, 18, fill="#f38ba8", outline="")
+        canvas.create_oval(26, 8, 36, 18, fill="#f9e2af", outline="")
+        canvas.create_oval(42, 8, 52, 18, fill="#a6e3a1", outline="")
+        canvas.create_text(canvas_w // 2, 13,
+                           text="Python", fill="#6c7086",
+                           font=("Consolas", 9))
+
+        # ── שורת הפרדה ──
+        canvas.create_line(0, 26, canvas_w, 26, fill="#313244")
+
+        # ── קוד עצמו — Syntax Highlight בסיסי ──
+        KEYWORDS = {
+            "def", "return", "if", "else", "elif", "for", "while",
+            "in", "not", "and", "or", "import", "from", "class",
+            "True", "False", "None", "print", "range", "self",
+            "break", "continue", "pass", "lambda", "yield",
+        }
+        COLOR_KW      = "#cba6f7"   # סגול — keywords
+        COLOR_STR     = "#a6e3a1"   # ירוק — strings
+        COLOR_COMMENT = "#585b70"   # אפור — comments
+        COLOR_NUM     = "#fab387"   # כתום — numbers
+        COLOR_DEFAULT = "#cdd6f4"   # לבן-כחול — רגיל
+        COLOR_FUNC    = "#89b4fa"   # כחול — function names after def/class
+        COLOR_BUILTIN = "#89dceb"   # תכלת — builtins
+
+        BUILTINS = {"print", "len", "range", "max", "min", "sum",
+                    "int", "str", "float", "list", "dict", "set",
+                    "sorted", "enumerate", "zip", "map", "filter"}
+
+        def colorize_line(line: str) -> list[tuple[str, str]]:
+            """מחזיר רשימה של (צבע, טקסט) לשורה אחת."""
+            tokens = []
+            # comment
+            if "#" in line:
+                pre, comment = line.split("#", 1)
+                tokens.extend(colorize_line(pre))
+                tokens.append((COLOR_COMMENT, "# " + comment))
+                return tokens
+            # strings (single & double)
+            str_pat = re.compile(r"""('[^']*'|"[^"]*")""")
+            parts = str_pat.split(line)
+            for part in parts:
+                if str_pat.match(part):
+                    tokens.append((COLOR_STR, part))
+                else:
+                    # tokenize words
+                    word_pat = re.compile(r"(\w+|[^\w]+)")
+                    for seg in word_pat.findall(part):
+                        if re.fullmatch(r"\d+(\.\d+)?", seg):
+                            tokens.append((COLOR_NUM, seg))
+                        elif seg in KEYWORDS:
+                            tokens.append((COLOR_KW, seg))
+                        elif seg in BUILTINS:
+                            tokens.append((COLOR_BUILTIN, seg))
+                        else:
+                            tokens.append((COLOR_DEFAULT, seg))
+            return tokens
+
+        # ── ציור הקוד ──
+        y = 26 + pad_y
+        for line in lines:
+            x = pad_x
+            colored = colorize_line(line)
+            for color, seg in colored:
+                canvas.create_text(x, y, text=seg, anchor="nw",
+                                   fill=color, font=("Consolas", 11))
+                # הזזת x — נאמד לפי מספר תווים
+                x += len(seg) * char_w
+            y += char_h
+
+        # ── כפתור Copy ──
+        def copy_code(event=None):
+            root.clipboard_clear()
+            root.clipboard_append(code)
+            btn_copy.config(text="✓ Copied!")
+            root.after(1500, lambda: btn_copy.config(text="Copy"))
+
+        btn_copy = tk.Button(
+            canvas, text="Copy",
+            bg="#313244", fg="#cdd6f4",
+            activebackground="#45475a",
+            font=("Consolas", 8), relief=tk.FLAT,
+            bd=0, padx=6, pady=2,
+            cursor="hand2", command=copy_code,
+        )
+        canvas.create_window(canvas_w - 6, 4, anchor="ne", window=btn_copy)
+
+        # ── הכנסת הקנבס לתוך הטקסט ──
+        log.window_create(tk.END, window=canvas, padx=6, pady=4)
+        log.insert(tk.END, "\n\n")
+        log.config(state=tk.DISABLED)
+        log.see(tk.END)
+
+    # ── פונקציה מאוחדת לכתיבת תשובת AI ──
+    def log_ai_reply(reply: str):
+        """מציגה תשובה — טקסט רגיל כטקסט, קוד כקנבס."""
+        parts = split_reply(reply)
+        log_write("ai_lbl", "AI:    ")
+        for kind, content in parts:
+            if kind == "code":
+                log_write("ai_text", "\n")   # שורה לפני הקנבס
+                log_code_block(content)
+            else:
+                log_write("ai_text", fix_rtl(content.strip()) + "\n")
+        log_write("ai_text", "\n")
 
     log_write("hint",    "Mini Hebrew/English AI - powered by NumPy only\n")
     log_write("hint",    "Type in Hebrew or English and press Enter\n")
@@ -192,9 +344,8 @@ def main():
 
         tool_reply = answer_with_tools(user_text, tok)
         if tool_reply:
-            log_write("ai_lbl",  "AI:    ")
-            log_write("ai_text", fix_rtl(tool_reply) + "\n\n")
-            conversation_history.append(("user", user_text))
+            log_ai_reply(tool_reply)
+            conversation_history.append(("user",  user_text))
             conversation_history.append(("model", tool_reply))
             return
 
@@ -219,8 +370,7 @@ def main():
             reply = "..."
 
         conversation_history.append(("model", reply))
-        log_write("ai_lbl",  "AI:    ")
-        log_write("ai_text", fix_rtl(reply) + "\n\n")
+        log_ai_reply(reply)
 
     def clear_chat():
         conversation_history.clear()

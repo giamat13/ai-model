@@ -1,0 +1,124 @@
+{
+  "better_code_examples": [
+    {
+      "id": "code_clear_001",
+      "source": "dialogue",
+      "topic": "קוד",
+      "text": "user : כתוב לי קוד פייתון model : def hello ( ) : print ( 'hello world' )"
+    },
+    {
+      "id": "code_clear_002",
+      "source": "dialogue",
+      "topic": "קוד",
+      "text": "user : צור לי פונקציה model : def add_numbers ( a , b ) : return a + b"
+    },
+    {
+      "id": "code_clear_003",
+      "source": "dialogue",
+      "topic": "קוד",
+      "text": "user : תכתוב לי דוגמה בפייתון model : for i in range ( 5 ) : print ( i )"
+    },
+    {
+      "id": "code_clear_004",
+      "source": "dialogue",
+      "topic": "קוד",
+      "text": "user : write me python code model : def greet ( name ) : print ( 'hello' , name )"
+    },
+    {
+      "id": "code_clear_005",
+      "source": "dialogue",
+      "topic": "קוד",
+      "text": "user : create a function model : def multiply ( x , y ) : return x * y"
+    },
+    {
+      "id": "code_clear_006",
+      "source": "dialogue",
+      "topic": "קוד",
+      "text": "user : תן לי דוגמה של קוד model : numbers = [ 1 , 2 , 3 , 4 , 5 ] for num in numbers : print ( num )"
+    },
+    {
+      "id": "code_clear_007",
+      "source": "dialogue",
+      "topic": "קוד",
+      "text": "user : כתוב קוד שמדפיס שלום model : print ( 'שלום' )"
+    },
+    {
+      "id": "code_clear_008",
+      "source": "dialogue",
+      "topic": "קוד",
+      "text": "user : צור פונקציה שבודקת אם מספר זוגי model : def is_even ( n ) : return n % 2 == 0"
+    },
+    {
+      "id": "code_clear_009",
+      "source": "dialogue",
+      "topic": "קוד",
+      "text": "user : write code to print hello model : print ( 'hello' )"
+    },
+    {
+      "id": "code_clear_010",
+      "source": "dialogue",
+      "topic": "קוד",
+      "text": "user : give me example code model : x = 10 if x > 5 : print ( 'x is big' )"
+    },
+    {
+      "id": "code_clear_011",
+      "source": "dialogue",
+      "topic": "קוד",
+      "text": "user : תכתוב לי לולאה model : for i in range ( 10 ) : print ( 'number' , i )"
+    },
+    {
+      "id": "code_clear_012",
+      "source": "dialogue",
+      "topic": "קוד",
+      "text": "user : צור רשימה בפייתון model : my_list = [ 1 , 2 , 3 , 4 , 5 ]"
+    },
+    {
+      "id": "code_clear_013",
+      "source": "dialogue",
+      "topic": "קוד",
+      "text": "user : write a loop model : i = 0 while i < 5 : print ( i ) i += 1"
+    },
+    {
+      "id": "code_clear_014",
+      "source": "dialogue",
+      "topic": "קוד",
+      "text": "user : create list in python model : fruits = [ 'apple' , 'banana' , 'orange' ]"
+    },
+    {
+      "id": "code_clear_015",
+      "source": "dialogue",
+      "topic": "קוד",
+      "text": "user : תכתוב תנאי model : age = 18 if age >= 18 : print ( 'adult' ) else : print ( 'minor' )"
+    },
+    {
+      "id": "code_clear_016",
+      "source": "dialogue",
+      "topic": "קוד",
+      "text": "user : write fibonacci model : def fib ( n ) : a , b = 0 , 1 for _ in range ( n ) : print ( a ) a , b = b , a + b"
+    },
+    {
+      "id": "code_clear_017",
+      "source": "dialogue",
+      "topic": "קוד",
+      "text": "user : צור מחלקה model : class Dog : def __init__ ( self , name ) : self . name = name def bark ( self ) : print ( 'woof' )"
+    },
+    {
+      "id": "code_clear_018",
+      "source": "dialogue",
+      "topic": "קוד",
+      "text": "user : create a class model : class Person : def __init__ ( self , name , age ) : self . name = name self . age = age"
+    },
+    {
+      "id": "code_clear_019",
+      "source": "dialogue",
+      "topic": "קוד",
+      "text": "user : כתוב מילון בפייתון model : student = { 'name' : 'Alice' , 'age' : 20 , 'grade' : 'A' }"
+    },
+    {
+      "id": "code_clear_020",
+      "source": "dialogue",
+      "topic": "קוד",
+      "text": "user : write dictionary python model : data = { 'key' : 'value' , 'number' : 42 } print ( data [ 'key' ] )"
+    }
+  ]
+}

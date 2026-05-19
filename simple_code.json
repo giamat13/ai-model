@@ -1,0 +1,124 @@
+{
+  "simple_code": [
+    {
+      "id": "simple_001",
+      "source": "dialogue",
+      "topic": "קוד פשוט",
+      "text": "user : תכתוב קוד model : print hello"
+    },
+    {
+      "id": "simple_002",
+      "source": "dialogue",
+      "topic": "קוד פשוט",
+      "text": "user : תכתוב פונקציה model : def hello : print hi"
+    },
+    {
+      "id": "simple_003",
+      "source": "dialogue",
+      "topic": "קוד פשוט",
+      "text": "user : צור קוד model : x equals 5 print x"
+    },
+    {
+      "id": "simple_004",
+      "source": "dialogue",
+      "topic": "קוד פשוט",
+      "text": "user : תן דוגמה model : for i in range 3 : print i"
+    },
+    {
+      "id": "simple_005",
+      "source": "dialogue",
+      "topic": "קוד פשוט",
+      "text": "user : write code model : print world"
+    },
+    {
+      "id": "simple_006",
+      "source": "dialogue",
+      "topic": "קוד פשוט",
+      "text": "user : create function model : def add a b : return a plus b"
+    },
+    {
+      "id": "simple_007",
+      "source": "dialogue",
+      "topic": "קוד פשוט",
+      "text": "user : תכתוב לי קוד קטן model : name equals David print name"
+    },
+    {
+      "id": "simple_008",
+      "source": "dialogue",
+      "topic": "קוד פשוט",
+      "text": "user : צור פונקציה קטנה model : def say_hi : print hello"
+    },
+    {
+      "id": "simple_009",
+      "source": "dialogue",
+      "topic": "קוד פשוט",
+      "text": "user : תן לי קוד model : if x greater 0 : print positive"
+    },
+    {
+      "id": "simple_010",
+      "source": "dialogue",
+      "topic": "קוד פשוט",
+      "text": "user : כתוב דוגמה model : numbers equals 1 2 3 print numbers"
+    },
+    {
+      "id": "simple_011",
+      "source": "dialogue",
+      "topic": "קוד פשוט",
+      "text": "user : תכתוב קוד פשוט model : a equals 10 b equals 20 print a plus b"
+    },
+    {
+      "id": "simple_012",
+      "source": "dialogue",
+      "topic": "קוד פשוט",
+      "text": "user : צור לי קוד model : def double x : return x times 2"
+    },
+    {
+      "id": "simple_013",
+      "source": "dialogue",
+      "topic": "קוד פשוט",
+      "text": "user : write simple code model : count equals 0 count plus equals 1 print count"
+    },
+    {
+      "id": "simple_014",
+      "source": "dialogue",
+      "topic": "קוד פשוט",
+      "text": "user : give example model : text equals hello print text"
+    },
+    {
+      "id": "simple_015",
+      "source": "dialogue",
+      "topic": "קוד פשוט",
+      "text": "user : תכתוב משהו model : result equals 5 times 3 print result"
+    },
+    {
+      "id": "simple_016",
+      "source": "dialogue",
+      "topic": "קוד פשוט",
+      "text": "user : צור דוגמה model : my_list equals a b c for item in my_list : print item"
+    },
+    {
+      "id": "simple_017",
+      "source": "dialogue",
+      "topic": "קוד פשוט",
+      "text": "user : תן קוד model : age equals 25 if age greater 18 : print adult"
+    },
+    {
+      "id": "simple_018",
+      "source": "dialogue",
+      "topic": "קוד פשוט",
+      "text": "user : כתוב פונקציה model : def greet : return hello friend"
+    },
+    {
+      "id": "simple_019",
+      "source": "dialogue",
+      "topic": "קוד פשוט",
+      "text": "user : write function model : def sum_two x y : return x plus y"
+    },
+    {
+      "id": "simple_020",
+      "source": "dialogue",
+      "topic": "קוד פשוט",
+      "text": "user : create code model : data equals 100 200 300 print data"
+    }
+  ]
+}
