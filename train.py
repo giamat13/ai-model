@@ -45,7 +45,7 @@ HIDDEN_DIM  = int(os.environ.get("HIDDEN_DIM",  "128"))
 EPOCHS      = int(os.environ.get("EPOCHS",      "120"))
 LR          = float(os.environ.get("LR",        "0.01"))
 LOG_EVERY   = int(os.environ.get("LOG_EVERY",   "10"))
-BATCH_SIZE  = int(os.environ.get("BATCH_SIZE",  "32"))
+BATCH_SIZE  = int(os.environ.get("BATCH_SIZE",  "256"))
 
 
 # ════════════════════════════════════════════════════════════════
