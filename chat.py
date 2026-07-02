@@ -13,7 +13,10 @@ import numpy as np
 
 from tokenizer import Tokenizer
 from model     import MiniLM
-from assistant_tools import answer_with_tools, unknown_answer
+from assistant_tools import (
+    quick_tool_reply, knowledge_reply,
+    parse_calc_call, execute_calc, space_math_operators,
+)
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -104,7 +107,7 @@ def generate(model, tok, prompt, n_words, temperature):
     while len(ctx) < model.context_len:
         ctx = [pad_id] + ctx
 
-    generated = list(base_ids)
+    new_ids = []
     for _ in range(n_words):
         probs   = model.forward(np.array(ctx))
         logits  = np.log(probs + 1e-9) / max(temperature, 0.01)
@@ -114,18 +117,17 @@ def generate(model, tok, prompt, n_words, temperature):
         next_id = np.random.choice(len(probs), p=probs)
         if next_id == eos_id:
             break
-        generated.append(next_id)
+        new_ids.append(next_id)
         ctx = ctx[1:] + [next_id]
 
-    full = tok.decode(generated, skip_special=True)
-    marker = "model :"
-    idx = full.find(marker)
-    if idx != -1:
-        reply = full[idx + len(marker):].strip()
-        if "user :" in reply:
-            reply = reply[:reply.index("user :")].strip()
-        return reply
-    return full
+    # מפענחים רק את הטוקנים *החדשים* שהמודל ייצר — לא את כל הפרומפט. בשיחה
+    # מרובת-תורים הפרומפט מכיל כמה "model :", ולכן חיפוש המרקר החזיר בעבר את
+    # התשובה הישנה במקום את ההמשך החדש (וכך <calc> "נעלם" ושאלת חשבון נחטפה).
+    reply = tok.decode(new_ids, skip_special=True).strip()
+    for cut in ("user :", "model :"):
+        if cut in reply:
+            reply = reply[:reply.index(cut)].strip()
+    return reply
 
 
 # ══════════════════════════════════════════════════════
@@ -363,32 +365,35 @@ def main():
         log_write("you_lbl",  "You:   ")
         log_write("you_text", fix_rtl(user_text, wrap_width_chars()) + "\n")
 
-        tool_reply = answer_with_tools(user_text, tok)
-        if tool_reply:
-            log_ai_reply(tool_reply)
+        # 1. מענים ודאיים לפני המודל (ברכה/זהות/קוד/בקשת-פעולה)
+        quick = quick_tool_reply(user_text)
+        if quick:
+            log_ai_reply(quick)
             conversation_history.append(("user",  user_text))
-            conversation_history.append(("model", tool_reply))
+            conversation_history.append(("model", quick))
             return
 
         conversation_history.append(("user", user_text))
-        prompt_parts = []
-        for role, msg in conversation_history:
-            prompt_parts.append(f"{role} : {msg}")
-        prompt_parts.append("model :")
-        full_prompt = " ".join(prompt_parts)
 
-        tokens = tok.clean(user_text)
-        unk_token = tok.word2idx["<UNK>"]
-        unknown_count = sum(tok.word2idx.get(w, unk_token) == unk_token for w in tokens)
-        if tokens and unknown_count / len(tokens) > 0.35:
-            reply = unknown_answer(user_text)
-        else:
-            reply = generate(model, tok, full_prompt,
+        # 2. המודל רץ ומחליט. הקלט מרווח סביב אופרטורים ("7+5"→"7 + 5") כדי
+        #    שהטוקנייזר (רמת-מילה) יקרא נכון. אם המודל *הבין* שזו בקשת חישוב,
+        #    הוא פולט קריאה מובנית "<calc> op".
+        prompt_parts = [f"{role} : {msg}" for role, msg in conversation_history]
+        prompt_parts.append("model :")
+        full_prompt = space_math_operators(" ".join(prompt_parts))
+        raw_reply = generate(model, tok, full_prompt,
                              n_words=words_var.get(),
                              temperature=temp_var.get())
 
-        if not reply:
-            reply = "..."
+        # 3. קריאה לכלי? → חישוב דטרמיניסטי מדויק (לכל גודל מספר)
+        op = parse_calc_call(raw_reply)
+        if op:
+            result = execute_calc(user_text, op)
+            reply = result or knowledge_reply(user_text, tok) or raw_reply
+        else:
+            # 4. לא בקשת חישוב → חיפוש-ידע (מקור/ויקיפדיה) עדיף על פטפוט; אחרת
+            #    משאירים את תשובת המודל.
+            reply = knowledge_reply(user_text, tok) or raw_reply or "..."
 
         conversation_history.append(("model", reply))
         log_ai_reply(reply)

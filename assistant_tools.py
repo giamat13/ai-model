@@ -2,17 +2,17 @@
 assistant_tools.py - כלים חיצוניים למודל הזעיר.
 
 המודל עצמו קטן ולכן הוא לא אמור לנחש בכוח. הקובץ הזה מוסיף:
-  * מחשבון בטוח לביטויים מתמטיים פשוטים.
   * מחולל קוד Python חכם לפקודות כתיבת קוד.
   * חיפוש קצר בויקיפדיה לשאלות ידע.
   * החלטת "אני לא יודע" כאשר אין מספיק מידע.
+
+הערה: המחשבון האלגוריתמי (ast + eval) הוסר בכוונה. חשבון אינו עוד "כלי"
+חיצוני — המודל הנוירוני עצמו לומד לחשב מתוך דוגמאות אימון (ראה
+math_training_data.json). שאלות חשבון נופלות ל-generate() של המודל.
 """
 
 from __future__ import annotations
 
-import ast
-import math
-import operator
 import os
 import re
 import sys
@@ -150,6 +150,56 @@ def is_action_request(text: str) -> bool:
         return False
     first = words[0]
     return first in ACTION_VERBS_HE or first in ACTION_VERBS_EN
+
+
+# ════════════════════════════════════════════════════════════════
+#  CALCULATOR TOOL — "מודל מבין → כלי מחשב"
+#  המודל לא מחשב ולא משנן. הוא *מבין* שזו בקשת חישוב ופולט קריאה מובנית
+#  "<calc> op"; הכלי כאן מחלץ את שני המספרים מהקלט (תמיד מדויק) ומחשב
+#  דטרמיניסטית לכל גודל. הבינה = ההבנה+ההחלטה; הכלי = הביצוע המדויק.
+# ════════════════════════════════════════════════════════════════
+
+CALC_MARKER = "<calc>"
+_CALC_OPS = {
+    "+": lambda a, b: a + b,
+    "-": lambda a, b: a - b,
+    "*": lambda a, b: a * b,
+    "/": lambda a, b: a / b,
+}
+
+
+def space_math_operators(text: str) -> str:
+    """מוסיף רווחים סביב סמלי אופרטור כדי שהטוקנייזר (רמת-מילה) יראה '7 + 5'
+    ולא טוקן יחיד '7+5'. נרמול קלט למודל בלבד — לא נוגע במשמעות."""
+    return re.sub(r"([+\-*/])", r" \1 ", text)
+
+
+def parse_calc_call(model_reply: str) -> str | None:
+    """אם תשובת המודל היא קריאה לכלי ('<calc> *') — מחזיר את הפעולה שהמודל
+    הבין (+,-,*,/). אחרת None. זו ההחלטה *הנלמדת* של המודל."""
+    tokens = model_reply.strip().lower().split()
+    if not tokens or tokens[0] != CALC_MARKER:
+        return None
+    for tok in tokens[1:]:
+        if tok in _CALC_OPS:
+            return tok
+    return None
+
+
+def execute_calc(user_text: str, op: str) -> str | None:
+    """הכלי הדטרמיניסטי: מחלץ את שני המספרים הראשונים מהקלט המקורי (הם שם
+    מילולית → מדויק תמיד) ומבצע את הפעולה שהמודל בחר. עובד לכל גודל מספר."""
+    nums = re.findall(r"\d+", user_text)
+    if len(nums) < 2 or op not in _CALC_OPS:
+        return None
+    a, b = int(nums[0]), int(nums[1])
+    if op == "/" and b == 0:
+        return "אי אפשר לחלק באפס." if has_hebrew(user_text) else "Cannot divide by zero."
+    result = _CALC_OPS[op](a, b)
+    if isinstance(result, float) and result.is_integer():
+        result = int(result)
+    result_text = str(result) if isinstance(result, int) else f"{result:.6g}"
+    return f"התוצאה היא {result_text}." if has_hebrew(user_text) else f"The answer is {result_text}."
 
 
 def token_confidence(user_text: str, tok: Any) -> float:
@@ -432,84 +482,6 @@ def generate_code(text: str) -> str | None:
 
 
 # ════════════════════════════════════════════════════════════════
-#  CALCULATOR
-# ════════════════════════════════════════════════════════════════
-
-CALC_WORDS = {
-    "כמה", "חשב", "חשבי", "תחשב", "תחשבי", "חישוב", "מתמטיקה",
-    "calculate", "calc", "compute", "solve",
-}
-MATH_SYMBOL_RE = re.compile(r"\d\s*[\+\-\*/\^%]\s*\d|[\(\)]")
-
-
-def should_calculate(text: str) -> bool:
-    cleaned = text.lower()
-    words = set(re.findall(r"[\w\u0590-\u05FF]+", cleaned))
-    return bool(MATH_SYMBOL_RE.search(cleaned) or (words & CALC_WORDS and re.search(r"\d", cleaned)))
-
-
-def normalize_expression(text: str) -> str:
-    expr = text.lower()
-    replacements = {
-        "כמה זה": "", "מה זה": "", "חשב": "", "חשבי": "",
-        "תחשב": "", "תחשבי": "", "calculate": "", "compute": "", "solve": "",
-        "כפול": "*", "לחלק": "/", "חלקי": "/", "ועוד": "+",
-        "עוד": "+", "פלוס": "+", "מינוס": "-", "פחות": "-",
-        "בחזקת": "**", "^": "**",
-    }
-    for src, dst in replacements.items():
-        expr = expr.replace(src, dst)
-    expr = expr.replace("×", "*").replace("÷", "/")
-    expr = re.sub(r"[^0-9\.\+\-\*/%\(\)\s]", " ", expr)
-    expr = re.sub(r"\s+", " ", expr).strip()
-    return expr
-
-
-ALLOWED_BINOPS = {
-    ast.Add: operator.add, ast.Sub: operator.sub,
-    ast.Mult: operator.mul, ast.Div: operator.truediv,
-    ast.FloorDiv: operator.floordiv, ast.Mod: operator.mod,
-    ast.Pow: operator.pow,
-}
-ALLOWED_UNARY = {ast.UAdd: operator.pos, ast.USub: operator.neg}
-
-
-def _eval_math(node: ast.AST) -> float:
-    if isinstance(node, ast.Expression):
-        return _eval_math(node.body)
-    if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
-        return float(node.value)
-    if isinstance(node, ast.BinOp) and type(node.op) in ALLOWED_BINOPS:
-        left = _eval_math(node.left)
-        right = _eval_math(node.right)
-        if isinstance(node.op, ast.Pow) and abs(right) > 10:
-            raise ValueError("Exponent too large")
-        return ALLOWED_BINOPS[type(node.op)](left, right)
-    if isinstance(node, ast.UnaryOp) and type(node.op) in ALLOWED_UNARY:
-        return ALLOWED_UNARY[type(node.op)](_eval_math(node.operand))
-    raise ValueError("Unsupported expression")
-
-
-def calculate_answer(text: str) -> str | None:
-    if not should_calculate(text):
-        return None
-    expr = normalize_expression(text)
-    if not expr or not re.search(r"\d", expr):
-        return None
-    try:
-        tree = ast.parse(expr, mode="eval")
-        result = _eval_math(tree)
-    except (SyntaxError, ValueError, ZeroDivisionError, OverflowError):
-        return unknown_answer(text)
-
-    if math.isfinite(result) and result.is_integer():
-        result_text = str(int(result))
-    else:
-        result_text = f"{result:.10g}"
-    return f"התוצאה היא {result_text}." if has_hebrew(text) else f"The answer is {result_text}."
-
-
-# ════════════════════════════════════════════════════════════════
 #  WIKIPEDIA SEARCH
 # ════════════════════════════════════════════════════════════════
 
@@ -605,37 +577,42 @@ def should_use_external_lookup(user_text: str, tok: Any) -> bool:
 
 
 # ════════════════════════════════════════════════════════════════
-#  MAIN ENTRY POINT
+#  MAIN ENTRY POINTS
+#
+#  הזרימה ב-chat.py:
+#     quick_tool_reply → generate(model) → parse_calc_call/execute_calc
+#                     → knowledge_reply
+#  כלומר: החלטת-החישוב של *המודל* קודמת לחיפוש-ידע (מקור מקומי/ויקיפדיה),
+#  כדי ששאלת חשבון לא תיחטף. אין יותר גארד-regex שמחליט "זו מתמטיקה" —
+#  המודל הוא שמחליט (פולט <calc>), וזה בדיוק החלק הנלמד.
 # ════════════════════════════════════════════════════════════════
 
-def answer_with_tools(user_text: str, tok: Any) -> str | None:
-    # 0. שיחת חולין וזהות עצמית — לפני שכל טקסט קצר נחטף לחיפוש נושא
+def quick_tool_reply(user_text: str) -> str | None:
+    """מענים ודאיים שרצים *לפני* המודל: שיחת חולין, זהות, קוד, בקשת-פעולה."""
     if is_greeting(user_text):
         return greeting_answer(user_text)
 
     if is_identity_question(user_text):
         return identity_answer(user_text)
 
-    # 1. מחשבון — ראשון
-    calc = calculate_answer(user_text)
-    if calc:
-        return calc
-
-    # 2. מחולל קוד — לפני מקורות ידע
     code = generate_code(user_text)
     if code:
         return code
 
-    # 3. בקשת פעולה (ציווי) שאין לה כלי בפועל — "לא יודע", לא הסבר מילים
+    # בקשת פעולה (ציווי) שאין לה כלי בפועל — "לא יודע", לא הסבר מילים
     if is_action_request(user_text):
         return unknown_answer(user_text)
 
-    # 4. מקור מקומי מ-sources/ — עדיפות על ויקיפדיה
+    return None
+
+
+def knowledge_reply(user_text: str, tok: Any) -> str | None:
+    """חיפוש-ידע שרץ *אחרי* שהמודל לא ביקש חישוב: מקור מקומי, ויקיפדיה,
+    ולבסוף 'אני לא יודע' כשאין ביטחון."""
     local_source = lookup_local_source(user_text)
     if local_source:
         return local_source
 
-    # 5. ויקיפדיה + אני לא יודע
     topic = extract_topic(user_text)
     if should_use_external_lookup(user_text, tok):
         wiki = lookup_wikipedia(user_text)
@@ -645,3 +622,11 @@ def answer_with_tools(user_text: str, tok: Any) -> str | None:
             return unknown_answer(user_text)
 
     return None
+
+
+def answer_with_tools(user_text: str, tok: Any) -> str | None:
+    """נשמר לתאימות/שימוש עצמאי: quick ואז knowledge (בלי מסלול המודל)."""
+    quick = quick_tool_reply(user_text)
+    if quick is not None:
+        return quick
+    return knowledge_reply(user_text, tok)

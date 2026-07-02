@@ -33,12 +33,13 @@ _HERE           = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH       = os.path.join(_HERE, "training_data.json")
 API_DATA_PATH   = os.path.join(_HERE, "api_training_data.json")
 FETCHED_PATH    = os.path.join(_HERE, "fetched_articles.json")
+MATH_DATA_PATH  = os.path.join(_HERE, "math_training_data.json")
 SOURCES_DIR     = os.path.join(_HERE, "sources")
-DATA_PATHS      = [DATA_PATH, API_DATA_PATH, FETCHED_PATH]
+DATA_PATHS      = [DATA_PATH, API_DATA_PATH, FETCHED_PATH, MATH_DATA_PATH]
 SAVE_DIR        = _HERE
 HASHES_PATH     = os.path.join(SAVE_DIR, "trained_hashes.json")
 
-CONTEXT_LEN = int(os.environ.get("CONTEXT_LEN", "5"))
+CONTEXT_LEN = int(os.environ.get("CONTEXT_LEN", "8"))
 EMBED_DIM   = int(os.environ.get("EMBED_DIM",   "64"))
 HIDDEN_DIM  = int(os.environ.get("HIDDEN_DIM",  "128"))
 EPOCHS      = int(os.environ.get("EPOCHS",      "120"))
@@ -247,7 +248,8 @@ def train() -> tuple | None:
     # ── 4. מודל — טוען קיים או יוצר חדש ────────────────────────
     np.random.seed(42)
     model = load_existing_model(tok)
-    if model is None:
+    fresh = model is None
+    if fresh:
         print("[Train] יוצר מודל חדש.")
         model = MiniLM(
             vocab_size  = tok.vocab_size,
@@ -260,14 +262,19 @@ def train() -> tuple | None:
 
     print(f"\n{model}\n")
 
-    # ── 5. דוגמאות — רק מה שהשתנה ──────────────────────────────
-    changed_texts = [a["text"] for a in changed]
-    samples = make_samples(tok, changed_texts, CONTEXT_LEN)
+    # ── 5. דוגמאות ─────────────────────────────────────────────
+    #   מודל חדש (או שה-vocab גדל → אתחול מאפס) אין לו ידע קודם לשמר,
+    #   ולכן חייבים לאמן על כל הקורפוס — אחרת הוא "ישכח" את כל השאר ויכיר
+    #   רק את הפריטים החדשים. מודל קיים → אימון מצטבר על מה שהשתנה בלבד.
+    train_articles = all_articles if fresh else changed
+    train_texts    = [a["text"] for a in train_articles]
+    samples = make_samples(tok, train_texts, CONTEXT_LEN)
     if not samples:
-        print("[Train] לא נוצרו דוגמאות מהשינויים.")
+        print("[Train] לא נוצרו דוגמאות לאימון.")
         return None
 
-    print(f"[Data] דוגמאות אימון (מהשינויים): {len(samples):,}")
+    scope = "כל הקורפוס (מודל חדש)" if fresh else "מהשינויים בלבד"
+    print(f"[Data] דוגמאות אימון ({scope}): {len(samples):,}")
 
     # ── 6. לולאת אימון על הנתונים החדשים/שונים ─────────────────
     print(f"\n{'Epoch':>6}  {'Loss':>8}  {'זמן':>6}  {'דוגמה'}")
