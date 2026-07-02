@@ -103,6 +103,38 @@ class MiniLM:
         }
         return probs
 
+    # ── Forward pass — מנה שלמה (Batch) ──────────────────────────────────────
+
+    def forward_batch(self, context_ids: np.ndarray) -> np.ndarray:
+        """
+        גרסת ה-batch של forward — מעבדת B דוגמאות בבת-אחת.
+
+        context_ids: מערך (B, context_len) של אינדקסי מילים
+        מחזיר:       מטריצת הסתברויות (B, vocab_size)
+
+        זהה מתמטית ל-forward על כל שורה בנפרד, אבל משתמש בכפל-מטריצות
+        יחיד (BLAS) במקום לולאת Python — מכאן ההאצה.
+        """
+        B = context_ids.shape[0]
+
+        # 1. Embedding lookup — (B, context_len, embed_dim) → (B, input_dim)
+        emb = self.E[context_ids]              # (B, context_len, embed_dim)
+        x   = emb.reshape(B, -1)               # (B, context_len*embed_dim)
+
+        # 2. שכבה נסתרת — הביאס משודר (broadcast) על כל השורות
+        h_pre = x @ self.W1 + self.b1          # (B, hidden_dim)
+        h     = relu(h_pre)                     # (B, hidden_dim)
+
+        # 3. שכבת פלט
+        logits = h @ self.W2 + self.b2         # (B, vocab_size)
+        probs  = softmax(logits)               # (B, vocab_size)  ← axis=-1
+
+        self._cache = {
+            "context_ids": context_ids, "x": x,
+            "h_pre": h_pre, "h": h, "probs": probs, "B": B,
+        }
+        return probs
+
     # ── Loss ────────────────────────────────────────────────────────────────
 
     @staticmethod
@@ -114,6 +146,13 @@ class MiniLM:
         """
         p = probs[target_id]
         return -np.log(p + 1e-9)   # +1e-9 כדי למנוע log(0)
+
+    @staticmethod
+    def cross_entropy_loss_batch(probs: np.ndarray, targets: np.ndarray) -> float:
+        """Cross-Entropy ממוצע על כל המנה — (B, vocab) + (B,) targets."""
+        B = probs.shape[0]
+        p = probs[np.arange(B), targets]       # (B,) — ההסתברות לתשובה הנכונה
+        return float(np.mean(-np.log(p + 1e-9)))
 
     # ── Backward pass (Backpropagation) ─────────────────────────────────────
 
@@ -150,6 +189,48 @@ class MiniLM:
         dE = np.zeros_like(self.E)
         for pos, idx in enumerate(c["context_ids"]):
             dE[idx] += dx_reshaped[pos]        # מצטבר אם אותה מילה מופיעה כמה פעמים
+
+        return {"dE": dE, "dW1": dW1, "db1": db1, "dW2": dW2, "db2": db2}
+
+    # ── Backward pass — מנה שלמה (Batch) ─────────────────────────────────────
+
+    def backward_batch(self, targets: np.ndarray) -> dict:
+        """
+        גרדיאנטים *ממוצעים* על כל המנה, בכפל-מטריצות במקום לולאה.
+
+        targets: (B,) — האינדקס הנכון לכל דוגמה במנה.
+        הגרדיאנטים מנורמלים ל-1/B, כך שהם ממוצע-המנה (mini-batch SGD).
+        """
+        c      = self._cache
+        B      = c["B"]
+        probs  = c["probs"]                        # (B, vocab_size)
+
+        # ── dL/d(logits) = probs - one_hot(target), ממוצע על המנה ──────────
+        dlogits = probs.copy()
+        dlogits[np.arange(B), targets] -= 1.0
+        dlogits /= B                               # (B, vocab_size) — ממוצע
+
+        # ── שכבה שנייה ──────────────────────────────────────────────────────
+        dW2 = c["h"].T @ dlogits                   # (hidden_dim, vocab_size)
+        db2 = dlogits.sum(axis=0)                  # (vocab_size,)
+        dh  = dlogits @ self.W2.T                  # (B, hidden_dim)
+
+        # ── נגזרת דרך ReLU ───────────────────────────────────────────────────
+        dh_pre = dh * relu_grad(c["h_pre"])        # (B, hidden_dim)
+
+        # ── שכבה ראשונה ──────────────────────────────────────────────────────
+        dW1 = c["x"].T @ dh_pre                     # (input_dim, hidden_dim)
+        db1 = dh_pre.sum(axis=0)                    # (hidden_dim,)
+        dx  = dh_pre @ self.W1.T                    # (B, input_dim)
+
+        # ── Embedding — scatter-add לכל המילים שהופיעו במנה ─────────────────
+        dx_reshaped = dx.reshape(B, self.context_len, self.embed_dim)
+        dE = np.zeros_like(self.E)
+        np.add.at(
+            dE,
+            c["context_ids"].reshape(-1),          # (B*context_len,)
+            dx_reshaped.reshape(-1, self.embed_dim),
+        )
 
         return {"dE": dE, "dW1": dW1, "db1": db1, "dW2": dW2, "db2": db2}
 

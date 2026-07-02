@@ -29,7 +29,7 @@ This is a minimal, from-scratch neural language model (MiniLM) written in pure N
   - Loads all data sources (see below), tokenizes, runs SGD epochs
   - **Key feature:** hash-based change detection. Only trains on new/changed articles; skips unchanged ones
   - Saves `model.npz` (weights) and `tokenizer.json` (vocab); also saves `trained_hashes.json` for next run
-  - Parallelizes nothing; ~14s/epoch on ~6.4k training samples (context_len=8)
+  - Single-threaded Python driving batched NumPy/BLAS matmuls (`forward_batch`/`backward_batch`); ~196s/epoch on the current ~150k-article corpus (2.67M samples, context_len=8, BATCH_SIZE=256). Batch size matters a lot here: too small and epoch time is dominated by per-batch call overhead rather than actual compute (BATCH_SIZE=32 was ~549s/epoch on the same corpus)
 
 - **[chat.py](chat.py)** — Tkinter GUI and inference loop
   - Single place for all UI logic
@@ -133,7 +133,7 @@ Note: GitHub requires a `GITHUB_TOKEN` env var for higher rate limits. Skipped i
 ### Why no frameworks (NumPy only)?
 - Educational transparency: every matrix multiply, every gradient is visible and auditable
 - Memory/compute efficiency: no overhead from Keras, PyTorch, TF
-- But trade-off: no GPU, no batching, single-threaded (14s/epoch is acceptable for this scale)
+- But trade-off: no GPU, single-threaded Python training loop (though NumPy's BLAS backend does use multiple CPU threads inside each matmul). Mini-batching (`forward_batch`/`backward_batch`) keeps epoch time reasonable at the current corpus size; a GPU would add real framework dependencies (PyTorch+DirectML/OpenVINO) for a model this small (embed=64, hidden=128) where kernel-launch overhead likely outweighs the benefit
 
 ### Why word-level tokens, not character/BPE?
 - Simpler pipeline; Hebrew punctuation + diacritics handled upfront in tokenizer.clean()
@@ -209,7 +209,7 @@ python ask.py "Who are you?"
 ## Troubleshooting
 
 - **Model predictions are random:** Likely not trained yet or vocab size is very small. Check `model.npz` exists.
-- **Training is slow:** Single-threaded NumPy on CPU. ~14s/epoch is normal. Use `LOG_EVERY=10` to reduce print overhead.
+- **Training is slow:** Epoch time scales with `n_samples / BATCH_SIZE` (number of Python-level batch iterations), not just corpus size — a too-small `BATCH_SIZE` on a large corpus means thousands of tiny matmul calls dominated by per-call overhead instead of actual compute. On the current ~150k-article corpus, ~196s/epoch is normal at BATCH_SIZE=256; don't drop `BATCH_SIZE` much below that without checking epoch time. Use `LOG_EVERY=10` to reduce print overhead.
 - **Hebrew text looks garbled in GUI:** Font fallback in chat.py should handle it; if not, check system font support for Hebrew.
 - **Wikipedia lookups fail:** Rate-limited or no internet. Graceful fallback to "I don't know."
 - **Vocab mismatches after retraining:** If you manually edited training JSON, hash might not detect changes. Delete `trained_hashes.json` to force full retrain.

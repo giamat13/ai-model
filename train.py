@@ -45,6 +45,7 @@ HIDDEN_DIM  = int(os.environ.get("HIDDEN_DIM",  "128"))
 EPOCHS      = int(os.environ.get("EPOCHS",      "120"))
 LR          = float(os.environ.get("LR",        "0.01"))
 LOG_EVERY   = int(os.environ.get("LOG_EVERY",   "10"))
+BATCH_SIZE  = int(os.environ.get("BATCH_SIZE",  "256"))
 
 
 # ════════════════════════════════════════════════════════════════
@@ -133,20 +134,30 @@ def load_all_articles(paths: list[str]) -> list[dict]:
 
 def make_samples(
     tok: Tokenizer, texts: list[str], context_len: int
-) -> list[tuple[np.ndarray, int]]:
-    samples = []
-    pad_id  = tok.word2idx["<PAD>"]
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    בונה את כל דוגמאות האימון כמערכי NumPy חבילתיים:
+      X — (N, context_len) אינדקסי ההקשר
+      y — (N,)             אינדקס המילה הבאה לכל דוגמה
+    צורת מערך (ולא רשימת tuples) מאפשרת חיתוך מנות מהיר בלולאת האימון.
+    """
+    ctx_rows: list[list[int]] = []
+    targets:  list[int]       = []
+    pad_id = tok.word2idx["<PAD>"]
     for text in texts:
         ids = tok.encode(text, add_special=True)
         if len(ids) <= context_len:
             continue
         for i in range(len(ids) - context_len):
-            ctx    = np.array(ids[i : i + context_len])
             target = ids[i + context_len]
             if target == pad_id:
                 continue
-            samples.append((ctx, target))
-    return samples
+            ctx_rows.append(ids[i : i + context_len])
+            targets.append(target)
+
+    if not targets:
+        return np.empty((0, context_len), dtype=np.int64), np.empty(0, dtype=np.int64)
+    return np.array(ctx_rows, dtype=np.int64), np.array(targets, dtype=np.int64)
 
 
 # ════════════════════════════════════════════════════════════════
@@ -268,32 +279,45 @@ def train() -> tuple | None:
     #   רק את הפריטים החדשים. מודל קיים → אימון מצטבר על מה שהשתנה בלבד.
     train_articles = all_articles if fresh else changed
     train_texts    = [a["text"] for a in train_articles]
-    samples = make_samples(tok, train_texts, CONTEXT_LEN)
-    if not samples:
+    X, y = make_samples(tok, train_texts, CONTEXT_LEN)
+    n_samples = len(y)
+    if n_samples == 0:
         print("[Train] לא נוצרו דוגמאות לאימון.")
         return None
 
     scope = "כל הקורפוס (מודל חדש)" if fresh else "מהשינויים בלבד"
-    print(f"[Data] דוגמאות אימון ({scope}): {len(samples):,}")
+    print(f"[Data] דוגמאות אימון ({scope}): {n_samples:,}")
 
-    # ── 6. לולאת אימון על הנתונים החדשים/שונים ─────────────────
+    # ── 6. לולאת אימון חבילתית (mini-batch) ────────────────────
+    #   מעבדים BATCH_SIZE דוגמאות בכל צעד בכפל-מטריצות אחד (BLAS),
+    #   במקום דוגמה-בכל-פעם. הגרדיאנטים ממוצעים על המנה, ולכן ה-LR
+    #   מוגדל ליניארית (linear scaling rule) כדי לשמר את גודל הצעד
+    #   האפקטיבי לכל אפוק — אותה התכנסות, זמן-קיר קצר בהרבה.
+    batch_size = min(BATCH_SIZE, n_samples)
+    eff_lr     = LR * batch_size
+    n_batches  = (n_samples + batch_size - 1) // batch_size
+    print(f"[Train] מנה={batch_size}  |  מנות/אפוק={n_batches:,}  |  LR אפקטיבי={eff_lr:.4f}")
+
     print(f"\n{'Epoch':>6}  {'Loss':>8}  {'זמן':>6}  {'דוגמה'}")
     print("-" * 56)
 
     loss_history = []
     for epoch in range(1, EPOCHS + 1):
         t0 = time.time()
-        np.random.shuffle(samples)
+        perm = np.random.permutation(n_samples)
+        Xs, ys = X[perm], y[perm]
 
         epoch_loss = 0.0
-        for ctx, target in samples:
-            probs      = model.forward(ctx)
-            loss       = model.cross_entropy_loss(probs, target)
-            grads      = model.backward(target)
-            model.update(grads, lr=LR)
-            epoch_loss += loss
+        for start in range(0, n_samples, batch_size):
+            xb = Xs[start : start + batch_size]
+            yb = ys[start : start + batch_size]
+            probs = model.forward_batch(xb)
+            loss  = model.cross_entropy_loss_batch(probs, yb)
+            grads = model.backward_batch(yb)
+            model.update(grads, lr=eff_lr)
+            epoch_loss += loss * len(yb)          # loss ממוצע-מנה → משוקלל לפי גודל
 
-        avg_loss = epoch_loss / len(samples)
+        avg_loss = epoch_loss / n_samples
         loss_history.append(avg_loss)
         elapsed  = time.time() - t0
 
