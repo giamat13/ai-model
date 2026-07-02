@@ -5,7 +5,9 @@ chat.py — ממשק גרפי לשיחה עם המודל המאומן
 import os
 import re
 import sys
+import textwrap
 import tkinter as tk
+import tkinter.font as tkfont
 from tkinter import scrolledtext
 import numpy as np
 
@@ -24,13 +26,22 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 def has_hebrew(text: str) -> bool:
     return any("\u0590" <= ch <= "\u05FF" for ch in text)
 
-def fix_rtl(text: str) -> str:
-    lines = text.split("\n")
-    fixed = []
-    for line in lines:
-        words = line.split()
-        fixed.append(" ".join(reversed(words)) if words and has_hebrew(line) else line)
-    return "\n".join(fixed)
+def fix_rtl(text: str, width: int = 70) -> str:
+    """
+    מתקן כיווניות RTL להצגה ב-Tk (שאינו תומך ב-bidi).
+    חשוב: קודם עוטפים כל פסקה לשורות-תצוגה לפי `width`, ורק *אז* הופכים
+    את סדר המילים בכל שורה-תצוגה בנפרד. אם היינו הופכים את כל הפסקה
+    כמקשה אחת ומשאירים ל-Tk לעטוף אותה, סדר השורות (מלמעלה למטה) היה
+    יוצא הפוך — השורה הראשונה שהוצגה הייתה מכילה את הסוף הלוגי של הטקסט.
+    """
+    out_lines = []
+    for line in text.split("\n"):
+        if not line.strip() or not has_hebrew(line):
+            out_lines.append(line)
+            continue
+        for sub in (textwrap.wrap(line, width=width) or [line]):
+            out_lines.append(" ".join(reversed(sub.split())))
+    return "\n".join(out_lines)
 
 
 # ── פיצול תשובה לחלקי טקסט וקוד ──────────────────────────────────────────
@@ -149,6 +160,16 @@ def main():
     log.tag_config("ai_text",  foreground="#ffffff", font=("Consolas", 12))
     log.tag_config("hint",     foreground="#585b70", font=("Consolas", 10))
     log.tag_config("divider",  foreground="#313244", font=("Consolas", 8))
+
+    text_font = tkfont.Font(family="Consolas", size=12)
+
+    def wrap_width_chars() -> int:
+        """כמה תווים נכנסים כרגע בשורה אחת של הלוג, לפי הרוחב בפועל של החלון."""
+        avail_px = log.winfo_width() - 40  # padx + שוליים
+        char_px = text_font.measure("א") or 9
+        if avail_px <= 0:
+            return 70
+        return max(20, avail_px // char_px)
 
     def log_write(tag, text):
         log.config(state=tk.NORMAL)
@@ -287,7 +308,7 @@ def main():
                 log_write("ai_text", "\n")   # שורה לפני הקנבס
                 log_code_block(content)
             else:
-                log_write("ai_text", fix_rtl(content.strip()) + "\n")
+                log_write("ai_text", fix_rtl(content.strip(), wrap_width_chars()) + "\n")
         log_write("ai_text", "\n")
 
     log_write("hint",    "Mini Hebrew/English AI - powered by NumPy only\n")
@@ -340,7 +361,7 @@ def main():
         entry.delete(0, tk.END)
 
         log_write("you_lbl",  "You:   ")
-        log_write("you_text", fix_rtl(user_text) + "\n")
+        log_write("you_text", fix_rtl(user_text, wrap_width_chars()) + "\n")
 
         tool_reply = answer_with_tools(user_text, tok)
         if tool_reply:

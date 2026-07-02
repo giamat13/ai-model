@@ -53,6 +53,105 @@ def unknown_answer(text: str) -> str:
     return UNKNOWN_HE if has_hebrew(text) else UNKNOWN_EN
 
 
+# ════════════════════════════════════════════════════════════════
+#  GREETINGS & SMALL TALK — לפני חיפוש נושא/ויקיפדיה
+# ════════════════════════════════════════════════════════════════
+
+GREETING_WORDS_HE = {"שלום", "הי", "היי", "אהלן", "יאסו"}
+GREETING_WORDS_EN = {"hi", "hello", "hey", "yo", "sup"}
+GREETING_PHRASES_HE = {
+    "שלום", "היי", "הי", "אהלן", "בוקר טוב", "ערב טוב", "לילה טוב",
+    "מה נשמע", "מה קורה", "מה המצב", "מה שלומך", "שלום מה שלומך",
+    "שלום מה נשמע",
+}
+GREETING_PHRASES_EN = {
+    "hi", "hello", "hey", "yo", "sup", "good morning", "good evening",
+    "good afternoon", "whats up", "what's up", "how are you", "hows it going",
+}
+
+GREETING_REPLIES_HE = ["שלום! איך אפשר לעזור?", "היי! מה שלומך?", "שלום, אני כאן בשבילך."]
+GREETING_REPLIES_EN = ["Hello! How can I help?", "Hi there! What can I do for you?", "Hey! I'm here to help."]
+
+
+def is_greeting(text: str) -> bool:
+    norm = normalize_text(text)
+    if not norm:
+        return False
+    if norm in GREETING_PHRASES_HE or norm in GREETING_PHRASES_EN:
+        return True
+    words = norm.split()
+    first = words[0]
+    return len(words) <= 3 and (first in GREETING_WORDS_HE or first in GREETING_WORDS_EN)
+
+
+def greeting_answer(text: str) -> str:
+    import random
+    replies = GREETING_REPLIES_HE if has_hebrew(text) else GREETING_REPLIES_EN
+    return random.choice(replies)
+
+
+# ════════════════════════════════════════════════════════════════
+#  SELF-AWARENESS — שאלות זהות ("מי אתה")
+# ════════════════════════════════════════════════════════════════
+
+IDENTITY_PATTERN_HE = re.compile(
+    r"מי את[הן]|מה את[הן]\b|את[הן] בינה מלאכותית|את[הן] רובוט|את[הן] בוט|את[הן] אנושי"
+)
+IDENTITY_PATTERN_EN = re.compile(
+    r"who are you|what are you|are you an? (ai|bot|robot|human)", re.IGNORECASE
+)
+
+IDENTITY_ANSWER_HE = (
+    "אני עוזר בינה מלאכותית קטן שנבנה עם NumPy. "
+    "אני יודע לחשב, לכתוב קוד, לחפש מידע ולשוחח איתך — אני לא אדם ואין לי זיכרונות אישיים משלי."
+)
+IDENTITY_ANSWER_EN = (
+    "I'm a small AI assistant built with NumPy. "
+    "I can calculate, write code, look things up, and chat — I'm not a person and I don't have personal memories of my own."
+)
+
+
+def is_identity_question(text: str) -> bool:
+    return bool(IDENTITY_PATTERN_HE.search(text) or IDENTITY_PATTERN_EN.search(text))
+
+
+def identity_answer(text: str) -> str:
+    return IDENTITY_ANSWER_HE if has_hebrew(text) else IDENTITY_ANSWER_EN
+
+
+# ════════════════════════════════════════════════════════════════
+#  ACTION / IMPERATIVE REQUESTS — "תעשה לי X" / "do X for me"
+#  כשהמשתמש מבקש ביצוע ולא הסבר: אם יש כלי אמיתי (מחשבון/קוד) — הוא
+#  יריץ אותו; אם אין — נגיד "אני לא יודע" במקום להסביר את משמעות המילים.
+# ════════════════════════════════════════════════════════════════
+
+ACTION_VERBS_HE = {
+    "עשה", "עשי", "תעשה", "תעשי", "בצע", "בצעי", "תבצע", "תבצעי",
+    "סדר", "סדרי", "תסדר", "תסדרי", "הכן", "הכיני", "תכין", "תכיני",
+    "בנה", "בני", "תבנה", "תבני", "תקן", "תקני", "תתקן", "תתקני",
+    "פתח", "פתחי", "תפתח", "תפתחי", "סגור", "סגרי", "תסגור", "תסגרי",
+    "שלח", "שלחי", "תשלח", "תשלחי", "מחק", "מחקי", "תמחק", "תמחקי",
+    "הוסף", "הוסיפי", "תוסיף", "תוסיפי", "שנה", "שני", "תשנה", "תשני",
+    "עדכן", "עדכני", "תעדכן", "תעדכני", "הורד", "הורידי", "תוריד", "תורידי",
+    "שמור", "שמרי", "תשמור", "תשמרי",
+}
+ACTION_VERBS_EN = {
+    "do", "make", "create", "perform", "run", "open", "close", "send",
+    "delete", "remove", "add", "set", "build", "fix", "update", "save",
+    "download", "install", "generate", "produce", "prepare", "organize",
+}
+
+
+def is_action_request(text: str) -> bool:
+    """True אם המשתמש מנסח בקשה כפקודה (פועל ציווי) ולא כשאלת ידע."""
+    norm = normalize_text(text)
+    words = norm.split()
+    if not words:
+        return False
+    first = words[0]
+    return first in ACTION_VERBS_HE or first in ACTION_VERBS_EN
+
+
 def token_confidence(user_text: str, tok: Any) -> float:
     tokens = tok.clean(user_text)
     if not tokens:
@@ -109,6 +208,26 @@ def score_source_document(query: str, doc: SourceDocument) -> float:
     return score
 
 
+# ════════════════════════════════════════════════════════════════
+#  FIRST-PERSON STRIPPING — מקורות מקומיים כתובים בגוף ראשון
+#  (למשל "X היה סבא שלי") מתארים קשר אישי של כותב המקור, לא של ה-AI,
+#  אז פשוט מוציאים את המשפט הזה מהציטוט במקום לנסח אותו מחדש.
+# ════════════════════════════════════════════════════════════════
+
+FIRST_PERSON_MARKERS_HE = {
+    "סבי", "סבתי", "אבי", "אמי", "בני", "בתי", "אחי", "אחותי",
+    "דודי", "דודתי", "שלי",
+}
+_FIRST_PERSON_RE = re.compile(r"\b(" + "|".join(re.escape(w) for w in FIRST_PERSON_MARKERS_HE) + r")\b")
+
+
+def strip_first_person_sentences(text: str) -> str:
+    """מסיר משפטים המתארים קשר אישי-משפחתי, כדי שה-AI לא יטען אותם כשלו."""
+    sentences = re.split(r"(?<=[.!?])\s+", text)
+    kept = [s for s in sentences if not _FIRST_PERSON_RE.search(s)]
+    return re.sub(r"\s+", " ", " ".join(kept)).strip()
+
+
 def lookup_local_source(text: str) -> str | None:
     docs = load_source_documents()
     if not docs:
@@ -136,6 +255,7 @@ def lookup_local_source(text: str) -> str | None:
 
     excerpt = " ".join(important_lines[:3]) if important_lines else " ".join(lines[:3])
     excerpt = re.sub(r"\s+", " ", excerpt).strip()
+    excerpt = strip_first_person_sentences(excerpt)
     if not excerpt:
         return None
     prefix = "לפי המקור המקומי:" if has_hebrew(text) else "According to the local source:"
@@ -489,6 +609,13 @@ def should_use_external_lookup(user_text: str, tok: Any) -> bool:
 # ════════════════════════════════════════════════════════════════
 
 def answer_with_tools(user_text: str, tok: Any) -> str | None:
+    # 0. שיחת חולין וזהות עצמית — לפני שכל טקסט קצר נחטף לחיפוש נושא
+    if is_greeting(user_text):
+        return greeting_answer(user_text)
+
+    if is_identity_question(user_text):
+        return identity_answer(user_text)
+
     # 1. מחשבון — ראשון
     calc = calculate_answer(user_text)
     if calc:
@@ -499,12 +626,16 @@ def answer_with_tools(user_text: str, tok: Any) -> str | None:
     if code:
         return code
 
-    # 3. מקור מקומי מ-sources/ — עדיפות על ויקיפדיה
+    # 3. בקשת פעולה (ציווי) שאין לה כלי בפועל — "לא יודע", לא הסבר מילים
+    if is_action_request(user_text):
+        return unknown_answer(user_text)
+
+    # 4. מקור מקומי מ-sources/ — עדיפות על ויקיפדיה
     local_source = lookup_local_source(user_text)
     if local_source:
         return local_source
 
-    # 4. ויקיפדיה + אני לא יודע
+    # 5. ויקיפדיה + אני לא יודע
     topic = extract_topic(user_text)
     if should_use_external_lookup(user_text, tok):
         wiki = lookup_wikipedia(user_text)
