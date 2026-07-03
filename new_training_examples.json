@@ -401,6 +401,258 @@
       "source": "dialogue",
       "topic": "JavaScript",
       "text": "user : what is JavaScript model : JavaScript is a programming language for web pages . It adds interactivity and functionality to websites ."
+    },
+    {
+      "id": "naming_bakery_001",
+      "source": "dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים לחנות לחם model : הנה כמה רעיונות לחנות לחם : הלחם החם . פינת הסיגל . בית הלחם העתיק . טחנת הלחם . מאפיה של אהבה ."
+    },
+    {
+      "id": "naming_bakery_002",
+      "source": "dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים לחנות לחם אחרת model : הנה רעיונות חדשים : תנור הזהב . מחנק הלחם . בית הקמח . עוגה טובה . לחם וחלום ."
+    },
+    {
+      "id": "naming_cafe_001",
+      "source": "dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים לקפה model : הנה כמה רעיונות לקפה : פינת הקפה . כוס החמה . בית הנוחות . הקפה הטוב . ארומה של נחמה ."
+    },
+    {
+      "id": "naming_cafe_002",
+      "source": "dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים לחנות קפה model : הנה רעיונות : טריז הקפה . בן הקפה . גרגר שחור . סגר קפה . קפה בלבנון ."
+    },
+    {
+      "id": "naming_restaurant_001",
+      "source": "dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים למסעדה model : הנה כמה רעיונות : מסעדת הטעם . פינת הטעמים . בית הדברים הטובים . שולחן פרוח . מטבח של שמחה ."
+    },
+    {
+      "id": "naming_restaurant_002",
+      "source": "dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים למסעדה ג`פנית model : הנה רעיונות : מסעדת הטעם האסיאתי . בית הסוש . פנינת יפן . טעם מהמזרח . מסעדה של הרוח ."
+    },
+    {
+      "id": "naming_flower_001",
+      "source": "dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים לחנות פרחים model : הנה כמה רעיונות : גן הפרחים . פינת הוורדים . חנות הפריחה . ריח של יופי . פרח וחלום ."
+    },
+    {
+      "id": "naming_flower_002",
+      "source": "dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים לחנות פרחים אחרת model : הנה רעיונות : גן הנושם . עלים וצבעים . בית הפרחים היפים . פריחה עונתית . הטבע בבלום ."
+    },
+    {
+      "id": "naming_bookstore_001",
+      "source": "dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים לחנות ספרים model : הנה כמה רעיונות : בית הספרים . עמוד הדעת . פינת הסיפור . ספרייה של חלומות . טוב להקרא ."
+    },
+    {
+      "id": "naming_bookstore_002",
+      "source": "dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים לספרייה model : הנה רעיונות : קולקציית הספרים . דף חדש . ספר וקפה . ספרים של השק . בית הקלמר ."
+    },
+    {
+      "id": "naming_shop_en_001",
+      "source": "dialogue",
+      "topic": "Creative Names",
+      "text": "user : give creative names for a coffee shop model : Here are some ideas : The Daily Brew . Coffee Corner . Cozy Cup . The Golden Bean . Morning Bliss ."
+    },
+    {
+      "id": "naming_shop_en_002",
+      "source": "dialogue",
+      "topic": "Creative Names",
+      "text": "user : give creative names for a flower shop model : Here are some suggestions : Blooming Garden . The Petal House . Nature s Canvas . Floral Dreams . Botanical Bliss ."
+    },
+    {
+      "id": "naming_shop_en_003",
+      "source": "dialogue",
+      "topic": "Creative Names",
+      "text": "user : give creative names for a bakery model : Here are some ideas : Fresh Bread Haven . The Rising Crust . Artisan Loaves . Oven Magic . Daily Warmth ."
+    },
+    {
+      "id": "naming_shop_en_004",
+      "source": "dialogue",
+      "topic": "Creative Names",
+      "text": "user : give creative names for a restaurant model : Here are some suggestions : The Taste House . Flavor Corner . Dining Dreams . Kitchen Journey . Culinary Haven ."
+    },
+    {
+      "id": "naming_shop_en_005",
+      "source": "dialogue",
+      "topic": "Creative Names",
+      "text": "user : give creative names for a bookstore model : Here are some ideas : Page Turner . The Reading Nook . Story House . Literary Corner . Bookish Bliss ."
+    },
+    {
+      "id": "naming_company_001",
+      "source": "dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים לחברה טכנולוגית model : הנה כמה רעיונות : דינמוט . כוח עתידי . שערי הדיגיטל . תמונה שוקפת . ערים חכמות ."
+    },
+    {
+      "id": "naming_company_002",
+      "source": "dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים לסטארטאפ model : הנה רעיונות : ניצוץ חדש . רעיון זהוב . מחקר החלל . קודקוד המהפכה . גשר לעתיד ."
+    },
+    {
+      "id": "naming_app_001",
+      "source": "dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים ליישום דברים model : הנה כמה רעיונות : חיבור חכם . בית מדויק . מלא כוח . חכום פשוט . עולם מחובר ."
+    },
+    {
+      "id": "naming_app_002",
+      "source": "dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים ליישום ניהול זמן model : הנה רעיונות : זמן במשימה . השעה החכמה . ערך זמן . מחסן רגעים . דקה לדקה ."
+    },
+    {
+      "id": "naming_restaurant_hi_qual_001",
+      "source": "manual_dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים למסעדה איטלקית model : הנה הצעות יוקרתיות : מסעדת טוסקנה . פסטה בלב . הטעמים של רומא . קלסיקו . שולחן המשפחה ."
+    },
+    {
+      "id": "naming_dessert_qual_001",
+      "source": "manual_dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים לחנות קינוח model : הנה רעיונות : טעם של שמחה . קינוח זהוב . מתוקות הלב . סוכריות של חלום . בעולם השוקולד ."
+    },
+    {
+      "id": "naming_yoga_qual_001",
+      "source": "manual_dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים לסטודיו יוגה model : הנה הצעות : שלום פנימי . מקום השקט . שן הרוח . צמיחה וקום . גן הנשמה ."
+    },
+    {
+      "id": "naming_salon_qual_001",
+      "source": "manual_dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים לסלון יופי model : הנה רעיונות : אלדין השוק . יופי טבעי . נקודת זיו . ספא של מלכות . קסומות ויפות ."
+    },
+    {
+      "id": "naming_wine_qual_001",
+      "source": "manual_dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים לחנות יין model : הנה הצעות : יין של ערבים . גן הגפנים . יין אחרון . הקנס של טעם . מלחמת הנוזל ."
+    },
+    {
+      "id": "naming_design_qual_001",
+      "source": "manual_dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים לסטודיו עיצוב model : הנה רעיונות : קו ודמיון . צבע וחלום . בנין הרעיון . מרחב יצירה . פיקסל של שיקום ."
+    },
+    {
+      "id": "naming_gym_qual_001",
+      "source": "manual_dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים לחדר כושר model : הנה הצעות : כוח פנימי . מחטא שריר . משימת הגוף . חדר הגבורה . עלייה מתמדת ."
+    },
+    {
+      "id": "naming_hotel_qual_001",
+      "source": "manual_dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים לבית מלון model : הנה רעיונות : שער הטיולים . שלום קרמי . מלון האלתר . מקלט במידה . ערב של מנוחה ."
+    },
+    {
+      "id": "naming_tech_qual_001",
+      "source": "manual_dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים לחברת טכנולוגיה model : הנה הצעות : נקודה זהוב . דיגיטל העתיד . כוח הקוד . חברת חכמת . מהפכה קלה ."
+    },
+    {
+      "id": "naming_english_premium_001",
+      "source": "manual_dialogue",
+      "topic": "Creative Names",
+      "text": "user : give creative names for a luxury restaurant model : Here are premium suggestions : The Michelin Table . Gastronomic Journey . Epicurean Haven . The Golden Fork . Flavor Cathedral ."
+    },
+    {
+      "id": "naming_english_premium_002",
+      "source": "manual_dialogue",
+      "topic": "Creative Names",
+      "text": "user : give creative names for a high-end boutique model : Here are ideas : Elegant Thread . Couture Dreams . The Fashion Sanctuary . Luxury Lines . Timeless Elegance ."
+    },
+    {
+      "id": "naming_english_premium_003",
+      "source": "manual_dialogue",
+      "topic": "Creative Names",
+      "text": "user : give creative names for a spa model : Here are suggestions : Sanctuary of Serenity . The Healing Touch . Tranquil Waters . Wellness Oasis . Rejuvenation Haven ."
+    },
+    {
+      "id": "naming_english_premium_004",
+      "source": "manual_dialogue",
+      "topic": "Creative Names",
+      "text": "user : give creative names for an upscale cafe model : Here are ideas : The Artisan Brew . Coffee Sanctuary . Espresso Dreams . The Daily Indulgence . Smooth Traditions ."
+    },
+    {
+      "id": "naming_english_premium_005",
+      "source": "manual_dialogue",
+      "topic": "Creative Names",
+      "text": "user : give creative names for a boutique hotel model : Here are suggestions : The Heritage House . Intimate Escapes . Luxury Retreats . The Traveler s Sanctuary . Guest s Dream ."
+    },
+    {
+      "id": "naming_english_yoga_001",
+      "source": "manual_dialogue",
+      "topic": "Creative Names",
+      "text": "user : give creative names for a yoga studio model : Here are ideas : Inner Peace Haven . Spirit of Motion . Zen Garden Studio . The Balanced Self . Breath and Beyond ."
+    },
+    {
+      "id": "naming_english_art_001",
+      "source": "manual_dialogue",
+      "topic": "Creative Names",
+      "text": "user : give creative names for an art gallery model : Here are suggestions : Canvas & Culture . The Creative Sanctuary . Artistic Visions . The Palette . Gallery of Dreams ."
+    },
+    {
+      "id": "naming_english_tech_001",
+      "source": "manual_dialogue",
+      "topic": "Creative Names",
+      "text": "user : give creative names for a tech startup model : Here are ideas : Digital Horizon . Innovation Hub . Code & Vision . The Tech Pioneers . Future Now ."
+    },
+    {
+      "id": "naming_english_coaching_001",
+      "source": "manual_dialogue",
+      "topic": "Creative Names",
+      "text": "user : give creative names for a life coaching business model : Here are suggestions : Transform Within . Growth Partners . The Journey Forward . Coaching Mastery . Thrive Together ."
+    },
+    {
+      "id": "naming_english_beauty_001",
+      "source": "manual_dialogue",
+      "topic": "Creative Names",
+      "text": "user : give creative names for a beauty salon model : Here are ideas : Radiance Studio . The Beauty Haven . Glow & Shine . Elegant Reflections . Grace Salon ."
+    },
+    {
+      "id": "naming_hebrew_cafe_qual_002",
+      "source": "manual_dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים לקפה בהשכונה model : הנה רעיונות : קפה של כל אחד . כוס חמה של קולח . הקפה של רחוב חיים . שקט קפה . בוקר בקופה ."
+    },
+    {
+      "id": "naming_hebrew_flower_qual_002",
+      "source": "manual_dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים לחנות פרחים עתיקה model : הנה הצעות : גן של אדום . אתר הוורדים . פרח בזיכרון . מינון הטבע . פרחי הימים הטובים ."
+    },
+    {
+      "id": "naming_hebrew_juice_qual_001",
+      "source": "manual_dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים לחנות משקאות בריאות model : הנה רעיונות : טרי של בריאות . מיץ טהור . חיים ירוקים . בוצע של בריאות . טעם של טבע ."
+    },
+    {
+      "id": "naming_hebrew_craft_qual_001",
+      "source": "manual_dialogue",
+      "topic": "שמות יצירתיים",
+      "text": "user : תן שמות יצירתיים לחנות יד מלאכה model : הנה הצעות : הרעיון שלך בידיים . אומנות ודמיון . יצירה מטבע . קסם של יד . חושך וקול ."
     }
   ]
 }

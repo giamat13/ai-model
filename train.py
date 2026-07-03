@@ -34,8 +34,10 @@ DATA_PATH       = os.path.join(_HERE, "training_data.json")
 API_DATA_PATH   = os.path.join(_HERE, "api_training_data.json")
 FETCHED_PATH    = os.path.join(_HERE, "fetched_articles.json")
 MATH_DATA_PATH  = os.path.join(_HERE, "math_training_data.json")
+NEW_EXAMPLES_PATH = os.path.join(_HERE, "new_training_examples.json")
+NAMING_DATA_PATH = os.path.join(_HERE, "naming_training_data.json")
 SOURCES_DIR     = os.path.join(_HERE, "sources")
-DATA_PATHS      = [DATA_PATH, API_DATA_PATH, FETCHED_PATH, MATH_DATA_PATH]
+DATA_PATHS      = [DATA_PATH, API_DATA_PATH, FETCHED_PATH, MATH_DATA_PATH, NEW_EXAMPLES_PATH, NAMING_DATA_PATH]
 SAVE_DIR        = _HERE
 HASHES_PATH     = os.path.join(SAVE_DIR, "trained_hashes.json")
 
