@@ -364,11 +364,13 @@ def main():
 
         log_write("you_lbl",  "You:   ")
         log_write("you_text", fix_rtl(user_text, wrap_width_chars()) + "\n")
+        print(f"You: {user_text}")
 
         # 1. מענים ודאיים לפני המודל (ברכה/זהות/קוד/בקשת-פעולה)
         quick = quick_tool_reply(user_text)
         if quick:
             log_ai_reply(quick)
+            print(f"AI:  {quick}")
             conversation_history.append(("user",  user_text))
             conversation_history.append(("model", quick))
             return
@@ -397,6 +399,7 @@ def main():
 
         conversation_history.append(("model", reply))
         log_ai_reply(reply)
+        print(f"AI:  {reply}")
 
     def clear_chat():
         conversation_history.clear()

@@ -313,6 +313,63 @@ def lookup_local_source(text: str) -> str | None:
 
 
 # ════════════════════════════════════════════════════════════════
+#  CREATIVE NAME SUGGESTIONS — "תן שמות יצירתיים ל<X>" / "creative names for <X>"
+#  זיהוי כללי של *סוג* הבקשה (לא של "חנות לחם" ספציפית) + חילוץ הנושא X
+#  מהטקסט, כדי שהכלי יעבוד לכל עסק/דבר ולא רק לדוגמה אחת ששוננה.
+# ════════════════════════════════════════════════════════════════
+
+NAMING_PATTERNS_HE = [
+    r"שמות\s+יצירתי(?:ים)?\s+ל(.+)",
+    r"שם\s+יצירתי\s+ל(.+)",
+    r"תני?\s+לי\s+שמות\s+ל(.+)",
+    r"רעיונות\s+לשמות?\s+ל(.+)",
+]
+NAMING_PATTERNS_EN = [
+    r"creative names? for (.+)",
+    r"suggest(?:ions)?\s+(?:a\s+)?names?\s+for (.+)",
+    r"name ideas for (.+)",
+]
+
+NAME_TEMPLATES_HE = [
+    "{x} הזהב",
+    "פינת ה{x}",
+    "{x} של פעם",
+    "בית {x}",
+    "{x} ומעלה",
+]
+NAME_TEMPLATES_EN = [
+    "The Golden {x}",
+    "{x} Corner",
+    "Artisan {x}",
+    "{x} House",
+    "The Cozy {x}",
+]
+
+
+def extract_naming_subject(text: str) -> str | None:
+    patterns = NAMING_PATTERNS_HE if has_hebrew(text) else NAMING_PATTERNS_EN
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if match:
+            subject = match.group(1).strip(" ?!.,")
+            subject = re.sub(r"^(a|an|the)\s+", "", subject, flags=re.IGNORECASE)
+            return subject if subject else None
+    return None
+
+
+def generate_creative_names(text: str) -> str | None:
+    """מייצר הצעות שם גנריות סביב הנושא שחולץ מהטקסט — לא תלוי בנושא ספציפי."""
+    subject = extract_naming_subject(text)
+    if not subject:
+        return None
+    templates = NAME_TEMPLATES_HE if has_hebrew(text) else NAME_TEMPLATES_EN
+    names = [t.format(x=subject) for t in templates]
+    if has_hebrew(text):
+        return "הנה כמה רעיונות לשם:\n" + "\n".join(f"• {n}" for n in names)
+    return "Here are some name ideas:\n" + "\n".join(f"• {n}" for n in names)
+
+
+# ════════════════════════════════════════════════════════════════
 #  CODE GENERATOR — מחולל קוד Python אמיתי
 # ════════════════════════════════════════════════════════════════
 
@@ -594,6 +651,10 @@ def quick_tool_reply(user_text: str) -> str | None:
 
     if is_identity_question(user_text):
         return identity_answer(user_text)
+
+    naming = generate_creative_names(user_text)
+    if naming:
+        return naming
 
     code = generate_code(user_text)
     if code:
