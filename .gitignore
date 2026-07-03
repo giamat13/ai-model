@@ -20,3 +20,5 @@ github_training_data.json
 
 TODO.md
 *.log
+
+*.npz
