@@ -514,6 +514,11 @@ def is_code_request(text: str) -> bool:
 
 def generate_code(text: str) -> str | None:
     """מייצר קוד Python לפי הבקשה."""
+    # אל תתעלם מבקשות יצירתי שמות — תן לעבור לדגם
+    is_naming = any(re.search(p, text, re.IGNORECASE) for p in NAMING_PATTERNS_HE + NAMING_PATTERNS_EN)
+    if is_naming:
+        return None
+
     if not is_code_request(text):
         return None
 
@@ -652,16 +657,14 @@ def quick_tool_reply(user_text: str) -> str | None:
     if is_identity_question(user_text):
         return identity_answer(user_text)
 
-    naming = generate_creative_names(user_text)
-    if naming:
-        return naming
-
     code = generate_code(user_text)
     if code:
         return code
 
     # בקשת פעולה (ציווי) שאין לה כלי בפועל — "לא יודע", לא הסבר מילים
-    if is_action_request(user_text):
+    # אבל לא לבקשות יצירתיות כמו "תן שמות יצירתיים ל..." — תן הן תן לעבור לדגם
+    is_naming = any(re.search(p, user_text, re.IGNORECASE) for p in NAMING_PATTERNS_HE + NAMING_PATTERNS_EN)
+    if is_action_request(user_text) and not is_naming:
         return unknown_answer(user_text)
 
     return None
