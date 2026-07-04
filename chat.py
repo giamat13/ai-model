@@ -77,17 +77,12 @@ def load_model():
     model_path = os.path.join(_HERE, "model.npz")
     tok = Tokenizer()
     tok.load(tok_path)
-    data   = np.load(model_path, allow_pickle=True)
-    config = data["config"]
-    vocab_size, embed_dim, hidden_dim, context_len = (
-        int(config[0]), int(config[1]), int(config[2]), int(config[3])
-    )
-    model = MiniLM(vocab_size, embed_dim, hidden_dim, context_len)
-    model.E  = data["E"]
-    model.W1 = data["W1"]
-    model.b1 = data["b1"]
-    model.W2 = data["W2"]
-    model.b2 = data["b2"]
+    # מקור-אמת יחיד לטעינה — אותו קוד ש-train.py משתמש בו (ראה MiniLM.load)
+    model = MiniLM.load(model_path)
+    if model is None:
+        raise RuntimeError(
+            "model.npz בפורמט ישן (ללא Attention). הרץ מחדש: python train.py"
+        )
     return model, tok
 
 

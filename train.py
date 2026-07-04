@@ -41,10 +41,10 @@ DATA_PATHS      = [DATA_PATH, API_DATA_PATH, FETCHED_PATH, MATH_DATA_PATH, NEW_E
 SAVE_DIR        = _HERE
 HASHES_PATH     = os.path.join(SAVE_DIR, "trained_hashes.json")
 
-CONTEXT_LEN = int(os.environ.get("CONTEXT_LEN", "8"))
+CONTEXT_LEN = int(os.environ.get("CONTEXT_LEN", "16"))
 EMBED_DIM   = int(os.environ.get("EMBED_DIM",   "64"))
 HIDDEN_DIM  = int(os.environ.get("HIDDEN_DIM",  "128"))
-EPOCHS      = int(os.environ.get("EPOCHS",      "120"))
+EPOCHS      = int(os.environ.get("EPOCHS",      "40"))
 LR          = float(os.environ.get("LR",        "0.01"))
 LOG_EVERY   = int(os.environ.get("LOG_EVERY",   "10"))
 BATCH_SIZE  = int(os.environ.get("BATCH_SIZE",  "256"))
@@ -148,13 +148,18 @@ def make_samples(
     pad_id = tok.word2idx["<PAD>"]
     for text in texts:
         ids = tok.encode(text, add_special=True)
-        if len(ids) <= context_len:
-            continue
-        for i in range(len(ids) - context_len):
-            target = ids[i + context_len]
+        # חלון שמאל-מרופד לכל טוקן-יעד: מנבאים כל מילה מ-context_len המילים
+        # שלפניה, וכשאין מספיק — מרפדים ב-<PAD> משמאל. כך גם טקסטים קצרים
+        # (רוב דוגמאות הדו-שיח) תורמים דוגמאות, ומצב האימון תואם לחיזוי
+        # ב-chat.py/generate ששם גם מרפדים משמאל.
+        for t in range(1, len(ids)):
+            target = ids[t]
             if target == pad_id:
                 continue
-            ctx_rows.append(ids[i : i + context_len])
+            window = ids[max(0, t - context_len):t]
+            if len(window) < context_len:
+                window = [pad_id] * (context_len - len(window)) + window
+            ctx_rows.append(window)
             targets.append(target)
 
     if not targets:
@@ -202,18 +207,14 @@ def load_existing_model(tok: Tokenizer) -> MiniLM | None:
     model_path = os.path.join(SAVE_DIR, "model.npz")
     if not os.path.exists(model_path):
         return None
-    data   = np.load(model_path, allow_pickle=True)
-    config = data["config"]
-    vocab_size, embed_dim, hidden_dim, context_len = (
-        int(config[0]), int(config[1]), int(config[2]), int(config[3])
-    )
-    # אם ה-vocab גדל (נוספו מילים) — אי אפשר לטעון, צריך אימון מחדש
-    if vocab_size != tok.vocab_size:
-        print(f"[Train] vocab השתנה ({vocab_size} → {tok.vocab_size}) — אימון מחדש.")
+    model = MiniLM.load(model_path)      # None אם פורמט ישן (ללא Attention)
+    if model is None:
+        print("[Train] model.npz בפורמט ישן (ללא Attention) — אימון מחדש.")
         return None
-    model = MiniLM(vocab_size, embed_dim, hidden_dim, context_len)
-    model.E  = data["E"];  model.W1 = data["W1"];  model.b1 = data["b1"]
-    model.W2 = data["W2"]; model.b2 = data["b2"]
+    # אם ה-vocab גדל (נוספו מילים) — אי אפשר לטעון, צריך אימון מחדש
+    if model.vocab_size != tok.vocab_size:
+        print(f"[Train] vocab השתנה ({model.vocab_size} → {tok.vocab_size}) — אימון מחדש.")
+        return None
     return model
 
 
@@ -223,11 +224,7 @@ def load_existing_model(tok: Tokenizer) -> MiniLM | None:
 
 def save_model(model: MiniLM, tok: Tokenizer) -> None:
     model_path = os.path.join(SAVE_DIR, "model.npz")
-    np.savez(
-        model_path,
-        E=model.E, W1=model.W1, b1=model.b1, W2=model.W2, b2=model.b2,
-        config=np.array([tok.vocab_size, model.embed_dim, model.hidden_dim, model.context_len]),
-    )
+    model.save(model_path)
     print(f"[Train] מודל נשמר → {model_path}")
 
 
