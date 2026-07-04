@@ -358,7 +358,8 @@ def train() -> tuple | None:
         # לעקוב אחרי זמן-קיר אמיתי בלי לחכות ל-generate() היקר יותר.
         avg_epoch_time = (time.time() - train_start) / epoch
         eta_seconds = avg_epoch_time * (EPOCHS - epoch)
-        eta_str = f"{eta_seconds / 60:.1f}m" if eta_seconds >= 60 else f"{eta_seconds:.0f}s"
+        eta_m, eta_s = divmod(round(eta_seconds), 60)
+        eta_str = f"{eta_m}m {eta_s}s" if eta_m else f"{eta_s}s"
 
         if epoch % LOG_EVERY == 0 or epoch == 1:
             seed   = "User: שלום Model:"
