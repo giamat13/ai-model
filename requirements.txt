@@ -1,0 +1,13 @@
+# MiniLM — PyTorch dependencies
+#
+# CPU build (works everywhere):
+#     pip install torch
+#
+# Intel GPU (XPU) build — what this project was developed against:
+#     pip install torch --index-url https://download.pytorch.org/whl/xpu
+#
+# NVIDIA CUDA build:
+#     pip install torch --index-url https://download.pytorch.org/whl/cu124
+#
+# The training/inference code auto-detects cuda → xpu → cpu (override with DEVICE=cpu|cuda|xpu).
+torch>=2.2

@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a minimal, from-scratch neural language model (MiniLM) written in pure NumPy—no frameworks. The goal is to build a real, learning AI system that progressively replaces hardcoded algorithms with learned behavior. The assistant speaks Hebrew and English, runs in a Tkinter GUI (chat.py), and integrates math, code generation, and knowledge lookup as deterministic tools triggered by the model's learned decisions.
+This is a minimal, from-scratch neural language model (MiniLM) built on **PyTorch**. The goal is to build a real, learning AI system that progressively replaces hardcoded algorithms with learned behavior. The assistant speaks Hebrew and English, runs in a Tkinter GUI (chat.py), and integrates math, code generation, and knowledge lookup as deterministic tools triggered by the model's learned decisions.
+
+> **Migration note:** originally pure NumPy with a hand-written backward pass; now PyTorch. The architecture is identical (single-head attention + feed-forward head) but backprop is `autograd`, updates go through `torch.optim.SGD` (+ `clip_grad_norm_`), and GPU (CUDA / Intel XPU) is auto-detected. Weights are saved as `model.pt` (a `{"config", "state_dict"}` checkpoint) instead of `model.npz`. `assistant_tools.py` and `tokenizer.py` are pure Python and were unchanged by the migration.
 
 **Core principle:** Intelligence lives in the *decision* to call a tool; the tool itself is deterministic. The model learns *what to do*, not how to compute it.
 
@@ -12,12 +14,12 @@ This is a minimal, from-scratch neural language model (MiniLM) written in pure N
 
 ### Core Components
 
-- **[model.py](model.py)** — The neural network core. A 2-layer feedforward architecture:
-  - Embedding layer: each token becomes a dense vector (embed_dim, default 64)
-  - Hidden layer: context_len * embed_dim → hidden_dim (default 128) via ReLU
-  - Output: softmax probabilities over vocab (vocab_size)
-  - Forward pass, cross-entropy loss, backprop (SGD), and parameter updates are all here
-  - Minimal, readable, fully differentiable
+- **[model.py](model.py)** — The neural network core. `MiniLM(torch.nn.Module)` — a minimal single-head Transformer block:
+  - Token embedding (`nn.Embedding`) + learned positional embedding (`nn.Parameter`)
+  - Single-head self-attention: `Wq/Wk/Wv/Wo` as bias-free `nn.Linear`, `softmax(QKᵀ/√D)·V`, residual add
+  - Feed-forward head on the **last position only**: `Linear(D→hidden) → ReLU → Linear(hidden→vocab)`
+  - `forward()` returns raw **logits** (loss uses `F.cross_entropy`); backprop is `autograd`, not hand-written
+  - `save()`/`load()` are the single source of truth for the `model.pt` format; `load()` returns `None` on an incompatible/old file so callers can retrain
 
 - **[tokenizer.py](tokenizer.py)** — Word-level tokenizer with vocab management
   - `build_vocab()` scans training texts, builds bidirectional word↔index mappings
@@ -26,10 +28,12 @@ This is a minimal, from-scratch neural language model (MiniLM) written in pure N
   - Handles Hebrew text with diacritics, punctuation stripping, lowercasing
 
 - **[train.py](train.py)** — Training loop with incremental learning
-  - Loads all data sources (see below), tokenizes, runs SGD epochs
-  - **Key feature:** hash-based change detection. Only trains on new/changed articles; skips unchanged ones
-  - Saves `model.npz` (weights) and `tokenizer.json` (vocab); also saves `trained_hashes.json` for next run
-  - Single-threaded Python driving batched NumPy/BLAS matmuls (`forward_batch`/`backward_batch`); ~196s/epoch on the current ~150k-article corpus (2.67M samples, context_len=8, BATCH_SIZE=256). Batch size matters a lot here: too small and epoch time is dominated by per-batch call overhead rather than actual compute (BATCH_SIZE=32 was ~549s/epoch on the same corpus)
+  - Loads all data sources (see below), tokenizes, runs mini-batch SGD epochs via `torch.optim.SGD`
+  - `loss.backward()` + `torch.nn.utils.clip_grad_norm_(..., 1.0)` — gradient clipping keeps the attention block stable (large steps on `QKᵀ` products otherwise blow up to NaN)
+  - `pick_device()` defaults to **CPU on purpose** (tiny model → GPU per-op overhead and Intel XPU's ~47s one-time kernel warmup cost more than they save); opt into a GPU with `DEVICE=xpu` or `DEVICE=cuda` when scaling up. The model is always saved on CPU so `model.pt` loads on any machine
+  - **Key feature:** hash-based change detection. Only trains on new/changed articles; skips unchanged ones (but if `model.pt` is missing it retrains from scratch even when hashes are unchanged — e.g. right after the NumPy→PyTorch format switch)
+  - Saves `model.pt` (weights) and `tokenizer.json` (vocab); also saves `trained_hashes.json` for next run
+  - `LR` is scaled linearly by batch size (`eff_lr = LR * batch_size`) to preserve the effective step size, matching the old NumPy loop
 
 - **[chat.py](chat.py)** — Tkinter GUI and inference loop
   - Single place for all UI logic
@@ -65,14 +69,16 @@ Data is split into modular JSON files so new sources can be added independently:
 ### Hyperparameters
 
 Controlled via environment variables (train.py):
-- `CONTEXT_LEN=8` (default) — how many prior tokens the model sees; raised from 5 to 8 to accommodate longer operation words like "הסכום של"
+- `CONTEXT_LEN=16` (default) — how many prior tokens the model sees
 - `EMBED_DIM=64` (default) — embedding dimension
-- `HIDDEN_DIM=128` (default) — hidden layer size
-- `EPOCHS=120` (default) — training passes
-- `LR=0.01` (default) — learning rate (SGD)
+- `HIDDEN_DIM=128` (default) — feed-forward head size
+- `EPOCHS=40` (default) — training passes
+- `LR=0.01` (default) — learning rate (scaled by batch size: `eff_lr = LR * BATCH_SIZE`)
 - `LOG_EVERY=10` (default) — print loss every N epochs
+- `BATCH_SIZE=256` (default) — mini-batch size
+- `DEVICE` (unset → CPU) — force compute device: `cpu` | `cuda` | `xpu`
 
-Example: `CONTEXT_LEN=10 EPOCHS=60 python train.py`
+Example: `CONTEXT_LEN=10 EPOCHS=60 DEVICE=xpu python train.py`
 
 ## Common Tasks
 
@@ -82,7 +88,7 @@ python train.py
 ```
 - Detects if `training_data.json` and friends have changed (via hash)
 - If no changes: instant (0 epochs, ~1s)
-- If changes: trains only new/changed articles across the data sources, updates `model.npz` and `trained_hashes.json`
+- If changes: trains only new/changed articles across the data sources, updates `model.pt` and `trained_hashes.json`
 
 ### Run the full app (train + GUI)
 ```bash
@@ -130,10 +136,11 @@ Note: GitHub requires a `GITHUB_TOKEN` env var for higher rate limits. Skipped i
 
 ## Design Decisions & Constraints
 
-### Why no frameworks (NumPy only)?
-- Educational transparency: every matrix multiply, every gradient is visible and auditable
-- Memory/compute efficiency: no overhead from Keras, PyTorch, TF
-- But trade-off: no GPU, single-threaded Python training loop (though NumPy's BLAS backend does use multiple CPU threads inside each matmul). Mini-batching (`forward_batch`/`backward_batch`) keeps epoch time reasonable at the current corpus size; a GPU would add real framework dependencies (PyTorch+DirectML/OpenVINO) for a model this small (embed=64, hidden=128) where kernel-launch overhead likely outweighs the benefit
+### Why PyTorch (was: NumPy only)?
+- The project started in pure NumPy for educational transparency — every matmul and gradient hand-written and auditable. That goal is served; the code is preserved in git history.
+- Migrated to PyTorch so the model can **grow** without rewriting the core: `autograd` removes the hand-written backward pass (add a layer → gradients are free), and GPU (CUDA / Intel XPU) is one env var away when the model gets big enough to need it.
+- PyTorch is the right target here (not JAX/TF): it's the mainstream research+production framework, has first-class Windows + Intel XPU support (already installed as `torch+xpu`), and scales from this toy up to real transformers. There's no "better than PyTorch" for this use case — that's why we stayed with it.
+- Default device is **CPU** anyway (see `pick_device`): at embed=64/hidden=128/1-head, CPU beats GPU (no per-op launch overhead, no ~47s XPU warmup). GPU is opt-in for future scale.
 
 ### Why word-level tokens, not character/BPE?
 - Simpler pipeline; Hebrew punctuation + diacritics handled upfront in tokenizer.clean()
@@ -142,9 +149,9 @@ Note: GitHub requires a `GITHUB_TOKEN` env var for higher rate limits. Skipped i
 - Trade-off: OOV words become `<UNK>`; no subword generalization
 
 ### Why SGD, not Adam/RMSprop?
-- Simpler; no state to track
+- Simpler; no state to track (kept `torch.optim.SGD` on migration to match prior behavior)
 - For small vocab/network, plain SGD works well
-- Math training data shows strong convergence in 120 epochs
+- Easy to switch: swap `torch.optim.SGD` for `torch.optim.Adam` in `train.py` if convergence needs it as the model grows
 
 ### Why deterministic tools for math/code/identity?
 - Correctness: the model's decision ("this is math") can be *learned*; the execution must be *always right*
@@ -164,9 +171,10 @@ Note: GitHub requires a `GITHUB_TOKEN` env var for higher rate limits. Skipped i
 
 ### Unit tests (basic smoke tests)
 ```bash
-python model.py        # Forward pass, backprop, weight update check
+python model.py        # Forward, a short autograd+SGD training run, save/load round-trip
 python tokenizer.py    # Encode/decode round-trip
 ```
+(On Windows, prefix with `set PYTHONIOENCODING=utf-8` — these scripts print Hebrew and don't reconfigure stdout themselves.)
 
 ### Debug training
 Set `LOG_EVERY=1` to see loss every epoch:
@@ -176,13 +184,12 @@ LOG_EVERY=1 python train.py
 
 ### Inspect model state
 ```python
-import numpy as np
 from model import MiniLM
 from tokenizer import Tokenizer
 
-model = MiniLM(vocab_size=500)
-model_dict = np.load("model.npz", allow_pickle=True)
-print(model_dict.files)  # ['E', 'W1', 'b1', 'W2', 'b2']
+model = MiniLM.load("model.pt")        # returns None if the file is missing/incompatible
+print(model)                            # config + param count
+print(list(model.state_dict()))         # ['tok_emb.weight', 'pos_emb', 'Wq.weight', ...]
 
 tok = Tokenizer()
 tok.load("tokenizer.json")
@@ -208,8 +215,10 @@ python ask.py "Who are you?"
 
 ## Troubleshooting
 
-- **Model predictions are random:** Likely not trained yet or vocab size is very small. Check `model.npz` exists.
-- **Training is slow:** Epoch time scales with `n_samples / BATCH_SIZE` (number of Python-level batch iterations), not just corpus size — a too-small `BATCH_SIZE` on a large corpus means thousands of tiny matmul calls dominated by per-call overhead instead of actual compute. On the current ~150k-article corpus, ~196s/epoch is normal at BATCH_SIZE=256; don't drop `BATCH_SIZE` much below that without checking epoch time. Use `LOG_EVERY=10` to reduce print overhead.
+- **Model predictions are random:** Likely not trained yet or vocab size is very small. Check `model.pt` exists.
+- **`model.pt` missing after migration:** the old NumPy `model.npz` is not loadable; `MiniLM.load` returns `None` and `train()` retrains from scratch even if `trained_hashes.json` says nothing changed (it checks for `model.pt` too). Just run `python train.py`.
+- **Training slower than expected on GPU:** for this tiny model CPU is the fast default; `DEVICE=xpu` pays a ~47s one-time kernel warmup and per-op launch overhead that isn't worth it until the model is much bigger. Leave it on CPU unless you've scaled up.
+- **`UnicodeEncodeError` running scripts:** Windows console is cp1252; `train.py`/`chat.py` reconfigure stdout to UTF-8, but `model.py`/`tokenizer.py` don't — run them with `set PYTHONIOENCODING=utf-8`.
 - **Hebrew text looks garbled in GUI:** Font fallback in chat.py should handle it; if not, check system font support for Hebrew.
 - **Wikipedia lookups fail:** Rate-limited or no internet. Graceful fallback to "I don't know."
 - **Vocab mismatches after retraining:** If you manually edited training JSON, hash might not detect changes. Delete `trained_hashes.json` to force full retrain.

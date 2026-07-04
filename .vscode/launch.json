@@ -1,4 +1,8 @@
 {
+  // env בכל הקונפיגורציות:
+  //   PYTHONIOENCODING=utf-8         → הדפסת עברית בקונסולה בלי UnicodeEncodeError
+  //   DEVICE=cpu                     → CPU במכוון (מהיר יותר למודל הזעיר; בלי חימום XPU של ~47ש')
+  //   PYDEVD_DISABLE_FILE_VALIDATION → מזרז את עליית המנפה
   "version": "0.2.0",
   "configurations": [
     {
@@ -7,7 +11,13 @@
       "request": "launch",
       "program": "${workspaceFolder}/run.py",
       "console": "integratedTerminal",
-      "justMyCode": true
+      "justMyCode": true,
+      "redirectOutput": true,
+      "env": {
+        "PYTHONIOENCODING": "utf-8",
+        "DEVICE": "cpu",
+        "PYDEVD_DISABLE_FILE_VALIDATION": "1"
+      }
     },
     {
       "name": "🧠 Train — אימון בלבד",
@@ -15,7 +25,13 @@
       "request": "launch",
       "program": "${workspaceFolder}/train.py",
       "console": "integratedTerminal",
-      "justMyCode": true
+      "justMyCode": true,
+      "redirectOutput": true,
+      "env": {
+        "PYTHONIOENCODING": "utf-8",
+        "DEVICE": "cpu",
+        "PYDEVD_DISABLE_FILE_VALIDATION": "1"
+      }
     },
     {
       "name": "💬 Chat — צ'אט בלבד",
@@ -23,7 +39,13 @@
       "request": "launch",
       "program": "${workspaceFolder}/chat.py",
       "console": "integratedTerminal",
-      "justMyCode": true
+      "justMyCode": true,
+      "redirectOutput": true,
+      "env": {
+        "PYTHONIOENCODING": "utf-8",
+        "DEVICE": "cpu",
+        "PYDEVD_DISABLE_FILE_VALIDATION": "1"
+      }
     }
   ]
 }

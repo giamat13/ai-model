@@ -1,20 +1,41 @@
 # MiniLM — Minimal Neural Language Model from Scratch
 
-A tiny, from-scratch language model built in pure NumPy. No frameworks. Bilingual (Hebrew + English). The model *learns* behavior instead of relying on hardcoded algorithms.
+A tiny, from-scratch language model built on **PyTorch**. A minimal single-head
+Transformer block (self-attention + feed-forward head) — small enough to read end
+to end, real enough to grow. Bilingual (Hebrew + English). The model *learns*
+behavior instead of relying on hardcoded algorithms.
+
+> **Note:** This project began as a pure-NumPy implementation with a hand-written
+> backprop. It has since been migrated to PyTorch: `autograd` derives the
+> gradients, a standard optimizer updates the weights, and GPU (CUDA/Intel XPU)
+> is supported — so the model can scale up in the future without rewriting the core.
 
 ## Quick Start
 
 ### Prerequisites
-- Python 3.8+
-- NumPy
+- Python 3.9+
+- PyTorch (`torch>=2.2`)
 - Tkinter (usually included with Python)
 
 ### Install
 ```bash
 git clone <repo>
 cd ai-model
-pip install numpy
+
+# CPU build (works everywhere):
+pip install torch
+
+# — or — Intel GPU (XPU) build (what this project was developed against):
+pip install torch --index-url https://download.pytorch.org/whl/xpu
+
+# — or — NVIDIA CUDA build:
+pip install torch --index-url https://download.pytorch.org/whl/cu124
 ```
+
+Training runs on **CPU by default** — deliberately: the model is tiny, so GPU
+per-op overhead (and Intel XPU's ~47s one-time kernel warmup) costs more than it
+saves at this size. When you scale the model up, opt into a GPU with `DEVICE=xpu`
+or `DEVICE=cuda`.
 
 ### Run
 ```bash
@@ -55,19 +76,26 @@ AI: Guido van Rossum created Python in 1989...
 
 ### Architecture
 
+A minimal single-head Transformer block, built from `torch.nn` layers:
+
 ```
 Input (word IDs)
     ↓
-Embedding Layer (each word → dense vector)
+Token Embedding + Positional Embedding      (each word → dense vector + position)
     ↓
-Flatten context window
+Self-Attention:  Q, K, V  →  softmax(QKᵀ/√D)·V  →  output projection
     ↓
-Hidden Layer (ReLU) + Linear transform
+Residual: x + attention                     (word representations "talk" to each other)
     ↓
-Softmax over vocabulary
+Take last position only                     (it has seen the whole context)
     ↓
-Output (next word probabilities)
+Linear → ReLU → Linear                       (feed-forward head)
+    ↓
+Logits over vocabulary → next-word probabilities
 ```
+
+Unlike a plain flatten-and-project network, self-attention lets every word in the
+context window dynamically weigh every other word — the same core idea as GPT.
 
 **Sizes (default):**
 - Vocab: ~5,000–10,000 words (depends on training data)
@@ -77,19 +105,21 @@ Output (next word probabilities)
 
 ### Training
 
-Pure SGD in NumPy, ~14 seconds per epoch on 6.4k training samples.
+Mini-batch SGD with PyTorch `autograd`. `loss.backward()` derives every gradient,
+`torch.optim.SGD` updates the weights, and `clip_grad_norm_` keeps the attention
+block numerically stable. Runs on CPU or GPU (CUDA/Intel XPU) automatically.
 
 **Smart incremental learning:** The trainer hashes each article. If an article hasn't changed since the last run, it's skipped. New/changed articles are trained once; the model is updated in-place. Next run is instant if there are no changes.
 
 ```bash
-# First run: trains everything
-python train.py  # ~30 min for 120 epochs
+# First run: trains everything from scratch
+python train.py
 
 # Second run: instant (no changes)
-python train.py  # Done in 1 second
+python train.py  # Done in ~1 second
 
-# After adding data: retrains only new articles
-python train.py  # ~5 min (changed articles only)
+# After adding data: retrains only new/changed articles
+python train.py
 ```
 
 ### Inference & Tools
@@ -153,19 +183,21 @@ python train.py
 ### Environment Variables
 ```bash
 # Hyperparameters (train.py)
-CONTEXT_LEN=8      # How many prior tokens the model sees
+CONTEXT_LEN=16     # How many prior tokens the model sees
 EMBED_DIM=64       # Embedding dimension
-HIDDEN_DIM=128     # Hidden layer size
-EPOCHS=120         # Training passes
-LR=0.01            # Learning rate
+HIDDEN_DIM=128     # Feed-forward head size
+EPOCHS=40          # Training passes
+LR=0.01            # Learning rate (scaled linearly by batch size)
 LOG_EVERY=10       # Print loss every N epochs
+BATCH_SIZE=256     # Mini-batch size
+DEVICE=cpu         # Force device: cpu | cuda | xpu (default: auto-detect)
 
 # Example:
 CONTEXT_LEN=12 HIDDEN_DIM=256 EPOCHS=200 python train.py
 ```
 
 ### Saved Files
-- `model.npz` — Trained weights (E, W1, b1, W2, b2)
+- `model.pt` — Trained weights (PyTorch checkpoint: config + `state_dict`)
 - `tokenizer.json` — Vocabulary (word↔index mappings)
 - `trained_hashes.json` — Change tracking (for incremental training)
 
@@ -191,9 +223,11 @@ python tokenizer.py  # Encode/decode
 
 ### Inspect Weights
 ```python
-import numpy as np
-model_dict = np.load("model.npz", allow_pickle=True)
-print(model_dict.files)  # ['E', 'W1', 'b1', 'W2', 'b2']
+import torch
+from model import MiniLM
+model = MiniLM.load("model.pt")
+print(model)                       # config + parameter count
+print(list(model.state_dict()))    # ['tok_emb.weight', 'pos_emb', 'Wq.weight', ...]
 ```
 
 ### See Loss During Training
@@ -208,21 +242,21 @@ python ask.py "What's 2 + 2?"
 
 ## Limitations
 
-- **No GPU**: Pure CPU NumPy. ~14 seconds per epoch on 6.4k samples.
-- **No batching**: Processes one token at a time during training.
+- **Tiny model**: single attention head, one feed-forward head. Not built for state-of-the-art quality.
 - **Word-level tokens**: No subword (BPE) generalization. Unknown words become `<UNK>`.
-- **Small context**: 8 tokens ≈ 1–2 sentences. Long conversations lose history.
-- **No attention/transformer**: Simple 2-layer feedforward. Can't handle very complex patterns.
+- **Small context**: 16 tokens ≈ a couple of sentences. Long conversations lose history.
+- **Vocab changes force a full retrain**: embeddings are word-specific, so a new word means training from scratch.
 
-These limits are intentional—the goal is clarity and simplicity, not state-of-the-art performance.
+These limits are intentional—the goal is clarity and simplicity. The PyTorch core
+means you *can* scale up (more heads, more layers, GPU) when you want to.
 
 ## Files Overview
 
 | File | Purpose |
 |------|---------|
-| `model.py` | Neural network core (forward, backward, SGD) |
+| `model.py` | Neural network core — `MiniLM(nn.Module)` (attention + FF head) |
 | `tokenizer.py` | Word tokenization & vocab |
-| `train.py` | Training loop with incremental learning |
+| `train.py` | PyTorch training loop with incremental learning |
 | `chat.py` | Tkinter GUI & inference |
 | `ask.py` | CLI mode (single query) |
 | `assistant_tools.py` | External tools (math, knowledge, code) |

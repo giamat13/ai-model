@@ -15,7 +15,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 _HERE      = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(_HERE, "model.npz")
+MODEL_PATH = os.path.join(_HERE, "model.pt")
 TOK_PATH   = os.path.join(_HERE, "tokenizer.json")
 
 
@@ -27,7 +27,7 @@ def run_train():
     """
     תמיד קורא ל-train().
     אם אין שינויים בנתונים — train() מחזיר None ומסיים תוך שנייה.
-    אם יש שינויים — מאמן רק אותם ומעדכן model.npz.
+    אם יש שינויים — מאמן רק אותם ומעדכן model.pt.
     """
     from train import train
     result = train()

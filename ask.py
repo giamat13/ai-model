@@ -9,7 +9,6 @@ ask.py — בדיקת-שפיות ל-CLI: מריץ את *אותה* צנרת בד�
 """
 
 import sys
-import numpy as np
 
 import chat as C
 from assistant_tools import (

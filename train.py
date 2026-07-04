@@ -1,12 +1,15 @@
 """
-train.py — לולאת אימון מלאה עם זיהוי שינויים
+train.py — לולאת אימון מלאה עם זיהוי שינויים (PyTorch)
 
 אימון מצטבר:
   • בכל הרצה מחשבים hash לכל article בנתונים.
   • article שכבר אומן ולא השתנה — מדלג עליו.
   • article חדש או ששונה — מאמן עליו בלבד.
-  • אם אין שינויים כלל — לא מאמן בכתב (0 אפוקים), פשוט ממשיך.
+  • אם אין שינויים כלל (ויש כבר model.pt) — לא מאמן, פשוט ממשיך.
   • המצב נשמר בקובץ trained_hashes.json לצד המודל.
+
+מנוע: PyTorch autograd + SGD. הפעפוע-לאחור אינו כתוב ידנית יותר —
+loss.backward() גוזר, ה-optimizer מעדכן, ו-clip_grad_norm_ שומר על יציבות.
 """
 
 import hashlib
@@ -15,7 +18,8 @@ import os
 import sys
 import time
 
-import numpy as np
+import torch
+import torch.nn.functional as F
 
 from tokenizer import Tokenizer
 from model     import MiniLM
@@ -40,6 +44,7 @@ SOURCES_DIR     = os.path.join(_HERE, "sources")
 DATA_PATHS      = [DATA_PATH, API_DATA_PATH, FETCHED_PATH, MATH_DATA_PATH, NEW_EXAMPLES_PATH, NAMING_DATA_PATH]
 SAVE_DIR        = _HERE
 HASHES_PATH     = os.path.join(SAVE_DIR, "trained_hashes.json")
+MODEL_PATH      = os.path.join(SAVE_DIR, "model.pt")
 
 CONTEXT_LEN = int(os.environ.get("CONTEXT_LEN", "16"))
 EMBED_DIM   = int(os.environ.get("EMBED_DIM",   "64"))
@@ -48,6 +53,27 @@ EPOCHS      = int(os.environ.get("EPOCHS",      "40"))
 LR          = float(os.environ.get("LR",        "0.01"))
 LOG_EVERY   = int(os.environ.get("LOG_EVERY",   "10"))
 BATCH_SIZE  = int(os.environ.get("BATCH_SIZE",  "256"))
+
+
+# ════════════════════════════════════════════════════════════════
+#  בחירת התקן (device) — GPU אם קיים, אחרת CPU
+# ════════════════════════════════════════════════════════════════
+
+def pick_device() -> torch.device:
+    """
+    בוחר התקן חישוב.
+
+    ברירת המחדל היא CPU *במכוון*: המודל כרגע זעיר (embed=64, hidden=128, ראש
+    אחד), וב-GPU תקורת ההשקה לכל אופרטור + חימום חד-פעמי (ב-Intel XPU כ-47ש'
+    לקומפילציית הקרנלים הראשונה) עולים על התועלת — CPU פשוט מהיר יותר וללא
+    הפתעות בגודל הזה. כשמגדילים את המודל בעתיד: DEVICE=xpu או DEVICE=cuda.
+
+    כפייה דרך משתנה-סביבה DEVICE (cpu/cuda/xpu). ללא DEVICE — CPU.
+    """
+    forced = os.environ.get("DEVICE", "").strip().lower()
+    if forced:
+        return torch.device(forced)
+    return torch.device("cpu")
 
 
 # ════════════════════════════════════════════════════════════════
@@ -108,7 +134,7 @@ def load_all_articles(paths: list[str]) -> list[dict]:
         batch = [a for a in data.get("articles", []) if a.get("text")]
         articles.extend(batch)
         print(f"[Data] נטען {os.path.basename(path)}: {len(batch)} פריטים")
-    
+
     # טעינת TXT מתקיית sources
     if os.path.exists(SOURCES_DIR):
         txt_files = [f for f in os.listdir(SOURCES_DIR) if f.endswith(".txt")]
@@ -124,7 +150,7 @@ def load_all_articles(paths: list[str]) -> list[dict]:
                     "topic": txt_file
                 })
         print(f"[Data] נטענו {len(txt_files)} קבצי TXT מתקיית sources")
-    
+
     if not articles:
         raise FileNotFoundError("לא נמצאו קבצי דאטה לאימון")
     return articles
@@ -136,12 +162,11 @@ def load_all_articles(paths: list[str]) -> list[dict]:
 
 def make_samples(
     tok: Tokenizer, texts: list[str], context_len: int
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[torch.Tensor, torch.Tensor]:
     """
-    בונה את כל דוגמאות האימון כמערכי NumPy חבילתיים:
-      X — (N, context_len) אינדקסי ההקשר
-      y — (N,)             אינדקס המילה הבאה לכל דוגמה
-    צורת מערך (ולא רשימת tuples) מאפשרת חיתוך מנות מהיר בלולאת האימון.
+    בונה את כל דוגמאות האימון כטנזורים:
+      X — (N, context_len) אינדקסי ההקשר  (LongTensor)
+      y — (N,)             אינדקס המילה הבאה לכל דוגמה  (LongTensor)
     """
     ctx_rows: list[list[int]] = []
     targets:  list[int]       = []
@@ -150,8 +175,7 @@ def make_samples(
         ids = tok.encode(text, add_special=True)
         # חלון שמאל-מרופד לכל טוקן-יעד: מנבאים כל מילה מ-context_len המילים
         # שלפניה, וכשאין מספיק — מרפדים ב-<PAD> משמאל. כך גם טקסטים קצרים
-        # (רוב דוגמאות הדו-שיח) תורמים דוגמאות, ומצב האימון תואם לחיזוי
-        # ב-chat.py/generate ששם גם מרפדים משמאל.
+        # תורמים דוגמאות, ומצב האימון תואם לחיזוי ב-chat.py (שם גם מרפדים משמאל).
         for t in range(1, len(ids)):
             target = ids[t]
             if target == pad_id:
@@ -163,18 +187,22 @@ def make_samples(
             targets.append(target)
 
     if not targets:
-        return np.empty((0, context_len), dtype=np.int64), np.empty(0, dtype=np.int64)
-    return np.array(ctx_rows, dtype=np.int64), np.array(targets, dtype=np.int64)
+        return (torch.empty((0, context_len), dtype=torch.long),
+                torch.empty(0, dtype=torch.long))
+    return (torch.tensor(ctx_rows, dtype=torch.long),
+            torch.tensor(targets, dtype=torch.long))
 
 
 # ════════════════════════════════════════════════════════════════
 #  יצירת טקסט — לבדיקה תוך-כדי אימון
 # ════════════════════════════════════════════════════════════════
 
+@torch.no_grad()
 def generate(
-    model: MiniLM, tok: Tokenizer,
+    model: MiniLM, tok: Tokenizer, device: torch.device,
     seed_text: str, n_words: int = 12, temperature: float = 0.8,
 ) -> str:
+    model.eval()
     pad_id = tok.word2idx["<PAD>"]
     bos_id = tok.word2idx["<BOS>"]
     eos_id = tok.word2idx["<EOS>"]
@@ -186,11 +214,10 @@ def generate(
 
     generated = list(base_ids)
     for _ in range(n_words):
-        probs   = model.forward(np.array(ctx))
-        logits  = np.log(probs + 1e-9) / temperature
-        logits -= logits.max()
-        probs   = np.exp(logits); probs /= probs.sum()
-        next_id = np.random.choice(len(probs), p=probs)
+        ctx_t = torch.tensor(ctx, dtype=torch.long, device=device)
+        logits = model.forward_one(ctx_t) / max(temperature, 0.01)
+        probs = F.softmax(logits, dim=-1)
+        next_id = int(torch.multinomial(probs, 1).item())
         if next_id == eos_id:
             break
         generated.append(next_id)
@@ -204,12 +231,11 @@ def generate(
 # ════════════════════════════════════════════════════════════════
 
 def load_existing_model(tok: Tokenizer) -> MiniLM | None:
-    model_path = os.path.join(SAVE_DIR, "model.npz")
-    if not os.path.exists(model_path):
+    if not os.path.exists(MODEL_PATH):
         return None
-    model = MiniLM.load(model_path)      # None אם פורמט ישן (ללא Attention)
+    model = MiniLM.load(MODEL_PATH)      # None אם פורמט לא-תואם (למשל npz ישן)
     if model is None:
-        print("[Train] model.npz בפורמט ישן (ללא Attention) — אימון מחדש.")
+        print("[Train] model.pt לא תואם (או פורמט npz ישן) — אימון מחדש.")
         return None
     # אם ה-vocab גדל (נוספו מילים) — אי אפשר לטעון, צריך אימון מחדש
     if model.vocab_size != tok.vocab_size:
@@ -218,14 +244,9 @@ def load_existing_model(tok: Tokenizer) -> MiniLM | None:
     return model
 
 
-# ════════════════════════════════════════════════════════════════
-#  שמירת מודל
-# ════════════════════════════════════════════════════════════════
-
-def save_model(model: MiniLM, tok: Tokenizer) -> None:
-    model_path = os.path.join(SAVE_DIR, "model.npz")
-    model.save(model_path)
-    print(f"[Train] מודל נשמר → {model_path}")
+def save_model(model: MiniLM) -> None:
+    model.save(MODEL_PATH)
+    print(f"[Train] מודל נשמר → {MODEL_PATH}")
 
 
 # ════════════════════════════════════════════════════════════════
@@ -234,8 +255,11 @@ def save_model(model: MiniLM, tok: Tokenizer) -> None:
 
 def train() -> tuple | None:
     print("=" * 56)
-    print("  🧠  אימון מצטבר — מאמן רק שינויים")
+    print("  🧠  אימון מצטבר (PyTorch) — מאמן רק שינויים")
     print("=" * 56)
+
+    device = pick_device()
+    print(f"[Train] התקן חישוב: {device}")
 
     # ── 1. טעינת כל הנתונים ─────────────────────────────────────
     all_articles = load_all_articles(DATA_PATHS)
@@ -245,10 +269,13 @@ def train() -> tuple | None:
     changed, unchanged = find_changed_articles(all_articles, trained)
     print(f"[Delta] ללא שינוי: {len(unchanged)}  |  חדש/שונה: {len(changed)}")
 
-    if not changed:
+    # אין שינויים — נדלג רק אם כבר קיים מודל שמור. אחרת (למשל אחרי מעבר
+    # לפורמט model.pt) חייבים לאמן מאפס למרות שה-hashes "מעודכנים".
+    if not changed and os.path.exists(MODEL_PATH):
         print("[Train] אין שינויים — מדלג על אימון. ✅")
-        # מחזירים None כסימן שלא אומן דבר
         return None
+    if not changed:
+        print("[Train] אין שינויים בנתונים, אך חסר model.pt — מאמן מאפס.")
 
     # ── 3. Tokenizer — תמיד נבנה מכל הנתונים (לשמור vocab עקבי) ─
     tok = Tokenizer()
@@ -256,7 +283,7 @@ def train() -> tuple | None:
     tok.save(os.path.join(SAVE_DIR, "tokenizer.json"))
 
     # ── 4. מודל — טוען קיים או יוצר חדש ────────────────────────
-    np.random.seed(42)
+    torch.manual_seed(42)
     model = load_existing_model(tok)
     fresh = model is None
     if fresh:
@@ -269,13 +296,13 @@ def train() -> tuple | None:
         )
     else:
         print(f"[Train] ממשיך אימון על מודל קיים ({model.num_params():,} פרמטרים).")
+    model.to(device)
 
     print(f"\n{model}\n")
 
     # ── 5. דוגמאות ─────────────────────────────────────────────
-    #   מודל חדש (או שה-vocab גדל → אתחול מאפס) אין לו ידע קודם לשמר,
-    #   ולכן חייבים לאמן על כל הקורפוס — אחרת הוא "ישכח" את כל השאר ויכיר
-    #   רק את הפריטים החדשים. מודל קיים → אימון מצטבר על מה שהשתנה בלבד.
+    #   מודל חדש אין לו ידע קודם לשמר → מאמנים על כל הקורפוס. מודל קיים →
+    #   אימון מצטבר על מה שהשתנה בלבד.
     train_articles = all_articles if fresh else changed
     train_texts    = [a["text"] for a in train_articles]
     X, y = make_samples(tok, train_texts, CONTEXT_LEN)
@@ -284,18 +311,20 @@ def train() -> tuple | None:
         print("[Train] לא נוצרו דוגמאות לאימון.")
         return None
 
+    X, y = X.to(device), y.to(device)
     scope = "כל הקורפוס (מודל חדש)" if fresh else "מהשינויים בלבד"
     print(f"[Data] דוגמאות אימון ({scope}): {n_samples:,}")
 
     # ── 6. לולאת אימון חבילתית (mini-batch) ────────────────────
-    #   מעבדים BATCH_SIZE דוגמאות בכל צעד בכפל-מטריצות אחד (BLAS),
-    #   במקום דוגמה-בכל-פעם. הגרדיאנטים ממוצעים על המנה, ולכן ה-LR
-    #   מוגדל ליניארית (linear scaling rule) כדי לשמר את גודל הצעד
-    #   האפקטיבי לכל אפוק — אותה התכנסות, זמן-קיר קצר בהרבה.
+    #   ה-LR מוגדל ליניארית (linear scaling rule) לשמר את גודל הצעד האפקטיבי,
+    #   בדיוק כמו בגרסת ה-NumPy. הגרדיאנטים נגזרים ע"י autograd; ה-optimizer
+    #   מעדכן; clip_grad_norm_ שומר על יציבות ה-Attention.
     batch_size = min(BATCH_SIZE, n_samples)
     eff_lr     = LR * batch_size
     n_batches  = (n_samples + batch_size - 1) // batch_size
     print(f"[Train] מנה={batch_size}  |  מנות/אפוק={n_batches:,}  |  LR אפקטיבי={eff_lr:.4f}")
+
+    optimizer = torch.optim.SGD(model.parameters(), lr=eff_lr)
 
     print(f"\n{'Epoch':>6}  {'Loss':>8}  {'זמן':>6}  {'דוגמה'}")
     print("-" * 56)
@@ -303,18 +332,20 @@ def train() -> tuple | None:
     loss_history = []
     for epoch in range(1, EPOCHS + 1):
         t0 = time.time()
-        perm = np.random.permutation(n_samples)
-        Xs, ys = X[perm], y[perm]
+        model.train()
+        perm = torch.randperm(n_samples, device=device)
 
         epoch_loss = 0.0
         for start in range(0, n_samples, batch_size):
-            xb = Xs[start : start + batch_size]
-            yb = ys[start : start + batch_size]
-            probs = model.forward_batch(xb)
-            loss  = model.cross_entropy_loss_batch(probs, yb)
-            grads = model.backward_batch(yb)
-            model.update(grads, lr=eff_lr)
-            epoch_loss += loss * len(yb)          # loss ממוצע-מנה → משוקלל לפי גודל
+            idx = perm[start : start + batch_size]
+            xb, yb = X[idx], y[idx]
+            optimizer.zero_grad()
+            logits = model(xb)
+            loss = F.cross_entropy(logits, yb)
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            optimizer.step()
+            epoch_loss += loss.item() * len(yb)   # loss ממוצע-מנה → משוקלל לפי גודל
 
         avg_loss = epoch_loss / n_samples
         loss_history.append(avg_loss)
@@ -322,11 +353,12 @@ def train() -> tuple | None:
 
         if epoch % LOG_EVERY == 0 or epoch == 1:
             seed   = "User: שלום Model:"
-            sample = generate(model, tok, seed, n_words=8, temperature=0.7)
+            sample = generate(model, tok, device, seed, n_words=8, temperature=0.7)
             print(f"{epoch:>6}  {avg_loss:>8.4f}  {elapsed:>5.1f}s  \"{sample}\"")
 
     # ── 7. שמירה ─────────────────────────────────────────────────
-    save_model(model, tok)
+    model.to("cpu")     # נשמר תמיד ב-CPU כדי שיטען בכל מכונה
+    save_model(model)
 
     # עדכן hashes — כל מה שנמצא כרגע (כולל unchanged) מעודכן
     new_hashes = {a["id"]: article_hash(a) for a in all_articles if a.get("id")}
@@ -339,13 +371,14 @@ def train() -> tuple | None:
     print("\n" + "=" * 56)
     print("  🎤  דוגמאות יצירה אחרי אימון")
     print("=" * 56)
+    model.to(device)
     for seed in [
         "User: שלום Model:",
         "User: Hello Model:",
         "User: מה זה ביולוגיה Model:",
         "User: what is mathematics Model:",
     ]:
-        out = generate(model, tok, seed, n_words=10, temperature=0.8)
+        out = generate(model, tok, device, seed, n_words=10, temperature=0.8)
         print(f"  {seed} →  {out}")
 
     return model, tok, loss_history

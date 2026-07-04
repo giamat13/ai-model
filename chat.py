@@ -9,7 +9,9 @@ import textwrap
 import tkinter as tk
 import tkinter.font as tkfont
 from tkinter import scrolledtext
-import numpy as np
+
+import torch
+import torch.nn.functional as F
 
 from tokenizer import Tokenizer
 from model     import MiniLM
@@ -74,21 +76,23 @@ def split_reply(text: str) -> list[tuple[str, str]]:
 # ══════════════════════════════════════════════════════
 def load_model():
     tok_path   = os.path.join(_HERE, "tokenizer.json")
-    model_path = os.path.join(_HERE, "model.npz")
+    model_path = os.path.join(_HERE, "model.pt")
     tok = Tokenizer()
     tok.load(tok_path)
     # מקור-אמת יחיד לטעינה — אותו קוד ש-train.py משתמש בו (ראה MiniLM.load)
     model = MiniLM.load(model_path)
     if model is None:
         raise RuntimeError(
-            "model.npz בפורמט ישן (ללא Attention). הרץ מחדש: python train.py"
+            "model.pt חסר או בפורמט לא-תואם. הרץ מחדש: python train.py"
         )
+    model.eval()
     return model, tok
 
 
 # ══════════════════════════════════════════════════════
 #  יצירת טקסט
 # ══════════════════════════════════════════════════════
+@torch.no_grad()
 def generate(model, tok, prompt, n_words, temperature):
     pad_id = tok.word2idx["<PAD>"]
     bos_id = tok.word2idx["<BOS>"]
@@ -102,14 +106,13 @@ def generate(model, tok, prompt, n_words, temperature):
     while len(ctx) < model.context_len:
         ctx = [pad_id] + ctx
 
+    device = next(model.parameters()).device
     new_ids = []
     for _ in range(n_words):
-        probs   = model.forward(np.array(ctx))
-        logits  = np.log(probs + 1e-9) / max(temperature, 0.01)
-        logits -= logits.max()
-        probs   = np.exp(logits)
-        probs  /= probs.sum()
-        next_id = np.random.choice(len(probs), p=probs)
+        ctx_t   = torch.tensor(ctx, dtype=torch.long, device=device)
+        logits  = model.forward_one(ctx_t) / max(temperature, 0.01)
+        probs   = F.softmax(logits, dim=-1)
+        next_id = int(torch.multinomial(probs, 1).item())
         if next_id == eos_id:
             break
         new_ids.append(next_id)

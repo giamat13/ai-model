@@ -8,6 +8,7 @@ venv/
 
 # מודל מאומן (קבצים כבדים — לא מועלים ל-git)
 model.npz
+model.pt
 tokenizer.json
 api_training_data.json
 wikipedia_training_data.json
