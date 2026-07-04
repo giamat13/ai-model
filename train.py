@@ -328,10 +328,11 @@ def train() -> tuple | None:
 
     optimizer = torch.optim.SGD(model.parameters(), lr=eff_lr)
 
-    print(f"\n{'Epoch':>6}  {'Loss':>8}  {'זמן':>6}  {'דוגמה'}")
+    print(f"\n{'Epoch':>6}  {'Loss':>8}  {'זמן':>6}  {'ETA':>8}  {'דוגמה'}")
     print("-" * 56)
 
     loss_history = []
+    train_start = time.time()
     for epoch in range(1, EPOCHS + 1):
         t0 = time.time()
         model.train()
@@ -353,10 +354,18 @@ def train() -> tuple | None:
         loss_history.append(avg_loss)
         elapsed  = time.time() - t0
 
+        # התקדמות + ETA — מודפס בכל epoch (לא רק ב-LOG_EVERY), כדי שאפשר
+        # לעקוב אחרי זמן-קיר אמיתי בלי לחכות ל-generate() היקר יותר.
+        avg_epoch_time = (time.time() - train_start) / epoch
+        eta_seconds = avg_epoch_time * (EPOCHS - epoch)
+        eta_str = f"{eta_seconds / 60:.1f}m" if eta_seconds >= 60 else f"{eta_seconds:.0f}s"
+
         if epoch % LOG_EVERY == 0 or epoch == 1:
             seed   = "User: שלום Model:"
             sample = generate(model, tok, device, seed, n_words=8, temperature=0.7)
-            print(f"{epoch:>6}  {avg_loss:>8.4f}  {elapsed:>5.1f}s  \"{sample}\"")
+            print(f"{epoch:>6}  {avg_loss:>8.4f}  {elapsed:>5.1f}s  {eta_str:>8}  \"{sample}\"")
+        else:
+            print(f"{epoch:>6}  {avg_loss:>8.4f}  {elapsed:>5.1f}s  {eta_str:>8}")
 
     # ── 7. שמירה ─────────────────────────────────────────────────
     model.to("cpu")     # נשמר תמיד ב-CPU כדי שיטען בכל מכונה
