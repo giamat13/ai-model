@@ -492,6 +492,113 @@ DEFAULT_CODE_BY_TOPIC = {
 }
 
 
+# ════════════════════════════════════════════════════════════════
+#  MULTI-LANGUAGE CODE TEMPLATES — כשהמשתמש מציין שפה שאינה Python
+#  (Java, JavaScript, C, C++, Go, SQL, HTML, CSS, Bash). זהו כלי
+#  דטרמיניסטי בדיוק כמו CODE_TEMPLATES של Python למעלה: התבנית מציגה
+#  קוד אמיתי ומדויק לפי מילות מפתח, במקום להישען על המודל הזעיר לנחש
+#  תחביר של 9 שפות — הוא רק *מזהה* איזו שפה וכוונה מבוקשות.
+# ════════════════════════════════════════════════════════════════
+
+OTHER_LANG_FENCE = {
+    "javascript": "javascript", "java": "java", "c": "c", "cpp": "cpp",
+    "go": "go", "sql": "sql", "html": "html", "css": "css", "bash": "bash",
+}
+
+OTHER_LANG_TEMPLATES: dict[str, dict[str, str]] = {
+    "javascript": {
+        r"(hello|שלום)": "function hello() {\n  console.log('Hello');\n}",
+        r"(loop|לולא).*(10|עשר)": "for (let i = 1; i <= 10; i++) {\n  console.log(i);\n}",
+        r"(add|sum|חיבור|הוספ)": "function add(a, b) {\n  return a + b;\n}",
+        r"(empty|ריק)": "function isEmpty(arr) {\n  return arr.length === 0;\n}",
+        r"(fetch|api)": "fetch('https://api.example.com/data')\n  .then(res => res.json())\n  .then(data => console.log(data));",
+    },
+    "java": {
+        r"(point|נקוד)": "class Point {\n    int x, y;\n    Point(int x, int y) {\n        this.x = x;\n        this.y = y;\n    }\n}",
+        r"(even|זוגי)": "static boolean isEven(int n) {\n    return n % 2 == 0;\n}",
+        r"(for.?each|foreach|לולא)": "for (String item : items) {\n    System.out.println(item);\n}",
+        r"(hello|שלום)": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Hello, World!\");\n    }\n}",
+    },
+    "c": {
+        r"(factorial|עצרת)": "int factorial(int n) {\n    if (n <= 1) return 1;\n    return n * factorial(n - 1);\n}",
+        r"(array|מערך|print|הדפס)": "for (int i = 0; i < n; i++) {\n    printf(\"%d \", arr[i]);\n}",
+        r"(swap|החלפ)": "int temp = a;\na = b;\nb = temp;",
+    },
+    "cpp": {
+        r"(vector|וקטור)": "class Vector2D {\npublic:\n    double x, y;\n    Vector2D(double x, double y) : x(x), y(y) {}\n};",
+        r"(sort|מיון)": "#include <algorithm>\nstd::sort(v.begin(), v.end());",
+    },
+    "go": {
+        r"(prime|ראשוני)": "func isPrime(n int) bool {\n    if n < 2 {\n        return false\n    }\n    for i := 2; i*i <= n; i++ {\n        if n%i == 0 {\n            return false\n        }\n    }\n    return true\n}",
+        r"(hello|שלום)": "package main\n\nimport \"fmt\"\n\nfunc main() {\n    fmt.Println(\"Hello, World!\")\n}",
+    },
+    "sql": {
+        r"(join)": "SELECT orders.id, customers.name\nFROM orders\nJOIN customers ON orders.customer_id = customers.id;",
+        r"(count|group|קבוצ)": "SELECT category, COUNT(*) AS total\nFROM products\nGROUP BY category;",
+        r"(select|all|כל המשתמשים|שאילת)": "SELECT * FROM users;",
+    },
+    "html": {
+        r".*": "<!DOCTYPE html>\n<html>\n<head><title>Page</title></head>\n<body>\n  <h1>Hello</h1>\n</body>\n</html>",
+    },
+    "css": {
+        r".*": "button:hover {\n  background-color: #4CAF50;\n  color: white;\n}",
+    },
+    "bash": {
+        r"(exist|קיים)": "if [ -f \"$1\" ]; then\n  echo \"exists\"\nfi",
+        r"(loop|לולא|file|קבצ)": "for f in *.txt; do\n  echo \"$f\"\ndone",
+    },
+}
+
+OTHER_LANG_DEFAULT = {
+    "javascript": "function hello() {\n  console.log('Hello');\n}",
+    "java": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Hello, World!\");\n    }\n}",
+    "c": "#include <stdio.h>\n\nint main() {\n    printf(\"Hello, World!\\n\");\n    return 0;\n}",
+    "cpp": "#include <iostream>\n\nint main() {\n    std::cout << \"Hello, World!\" << std::endl;\n    return 0;\n}",
+    "go": "package main\n\nimport \"fmt\"\n\nfunc main() {\n    fmt.Println(\"Hello, World!\")\n}",
+    "sql": "SELECT * FROM users;",
+    "html": "<!DOCTYPE html>\n<html>\n<head><title>Page</title></head>\n<body>\n  <h1>Hello</h1>\n</body>\n</html>",
+    "css": "button:hover {\n  background-color: #4CAF50;\n  color: white;\n}",
+    "bash": "for f in *.txt; do\n  echo \"$f\"\ndone",
+}
+
+
+def detect_code_language(text: str) -> str | None:
+    """מזהה אם המשתמש ציין שפת-קוד שאינה Python. סדר הבדיקה חשוב:
+    'c++' לפני 'java' לפני 'c' לבד, כדי שלא ייתפסו token-ים חופפים."""
+    lower = text.lower()
+    if re.search(r"c\+\+|cpp", lower):
+        return "cpp"
+    if re.search(r"\bjavascript\b|\bjs\b|\bnode\.?js\b", lower):
+        return "javascript"
+    if re.search(r"\bjava\b", lower):
+        return "java"
+    if re.search(r"\bgolang\b|\bin go\b|ב-go|\bgo\b.*(program|function|קוד)", lower):
+        return "go"
+    if re.search(r"\bsql\b", lower):
+        return "sql"
+    if re.search(r"\bhtml\b", lower):
+        return "html"
+    if re.search(r"\bcss\b", lower):
+        return "css"
+    if re.search(r"\bbash\b|\bshell\b", lower):
+        return "bash"
+    if re.search(r"\bin c\b|ב-c\b|\bc program\b", lower):
+        return "c"
+    return None
+
+
+def generate_other_language_code(text: str) -> str | None:
+    """כלי דטרמיניסטי מקביל ל-generate_code, אבל לשפות שאינן Python."""
+    lang = detect_code_language(text)
+    if lang is None:
+        return None
+    lower = text.lower()
+    for pattern, code in OTHER_LANG_TEMPLATES.get(lang, {}).items():
+        if re.search(pattern, lower):
+            return f"```{OTHER_LANG_FENCE[lang]}\n{code}\n```"
+    return f"```{OTHER_LANG_FENCE[lang]}\n{OTHER_LANG_DEFAULT[lang]}\n```"
+
+
 def is_code_request(text: str) -> bool:
     """בודק אם המשתמש מבקש קוד."""
     lower = text.lower()
@@ -525,6 +632,10 @@ def generate_code(text: str) -> str | None:
 
     if not is_code_request(text):
         return None
+
+    other_lang = generate_other_language_code(text)
+    if other_lang:
+        return other_lang
 
     lower = text.lower()
 
@@ -665,8 +776,14 @@ def quick_tool_reply(user_text: str) -> str | None:
     if code:
         return code
 
+    # בקשות שם יצירתי: כלי דטרמיניסטי (כמו הקוד) — מחלץ את הנושא בכל שפה/קטגוריה
+    # ומרכיב שמות מתבניות קבועות. המודל הזעיר עדיין לא אמין מספיק על נושאים
+    # שלא ראה בדיוק באימון (ראה training_data.json naming_*), אז הכלי מבטיח תוצאה תקינה תמיד.
+    names = generate_creative_names(user_text)
+    if names:
+        return names
+
     # בקשת פעולה (ציווי) שאין לה כלי בפועל — "לא יודע", לא הסבר מילים
-    # אבל לא לבקשות יצירתיות כמו "תן שמות יצירתיים ל..." — תן הן תן לעבור לדגם
     is_naming = any(re.search(p, user_text, re.IGNORECASE) for p in NAMING_PATTERNS_HE + NAMING_PATTERNS_EN)
     if is_action_request(user_text) and not is_naming:
         return unknown_answer(user_text)
