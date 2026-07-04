@@ -321,13 +321,17 @@ def lookup_local_source(text: str) -> str | None:
 NAMING_PATTERNS_HE = [
     r"שמות\s+יצירתי(?:ים)?\s+ל(.+)",
     r"שם\s+יצירתי\s+ל(.+)",
-    r"תני?\s+לי\s+שמות\s+ל(.+)",
+    r"תני?\s+לי\s+שמות?\s+ל(.+)",
     r"רעיונות\s+לשמות?\s+ל(.+)",
+    r"תן\s+לי\s+שמות?\s+ל(.+)",
+    r"תן\s+שם\s+ל(.+)",
+    r"תני\s+שם\s+ל(.+)",
 ]
 NAMING_PATTERNS_EN = [
     r"creative names? for (.+)",
     r"suggest(?:ions)?\s+(?:a\s+)?names?\s+for (.+)",
     r"name ideas for (.+)",
+    r"give (?:a |me a )?name for (.+)",
 ]
 
 NAME_TEMPLATES_HE = [
