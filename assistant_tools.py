@@ -8,7 +8,7 @@ assistant_tools.py - כלים חיצוניים למודל הזעיר.
 
 הערה: המחשבון האלגוריתמי (ast + eval) הוסר בכוונה. חשבון אינו עוד "כלי"
 חיצוני — המודל הנוירוני עצמו לומד לחשב מתוך דוגמאות אימון (ראה
-math_training_data.json). שאלות חשבון נופלות ל-generate() של המודל.
+training_data.json, ראה add_math_data.py). שאלות חשבון נופלות ל-generate() של המודל.
 """
 
 from __future__ import annotations

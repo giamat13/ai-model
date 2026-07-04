@@ -19,12 +19,9 @@ add_math_data.py — דאטה שמלמדת את המודל *להבין* בקשת
 
 from __future__ import annotations
 
-import json
-import os
 import random
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
-OUT_PATH = os.path.join(_HERE, "math_training_data.json")
+from data_utils import merge_into_training_data
 
 CALC = "<calc>"
 random.seed(42)
@@ -105,15 +102,14 @@ def build_articles() -> list[dict]:
 
 def main() -> None:
     articles = build_articles()
-    with open(OUT_PATH, "w", encoding="utf-8") as f:
-        json.dump({"articles": articles}, f, ensure_ascii=False, indent=2)
     by_op = {}
     for a in articles:
         op = a["id"].split("_")[1]
         by_op[op] = by_op.get(op, 0) + 1
-    print(f"[Math] נכתבו {len(articles)} דוגמאות קריאה-לכלי → {os.path.basename(OUT_PATH)}")
+    print(f"[Math] נבנו {len(articles)} דוגמאות קריאה-לכלי")
     print(f"[Math] לפי פעולה: {by_op}")
     print(f"[Math] דוגמא: {articles[0]['text']!r}")
+    merge_into_training_data(articles, "Math")
 
 
 if __name__ == "__main__":

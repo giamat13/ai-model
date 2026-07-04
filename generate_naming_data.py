@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Generate creative naming examples for various business types and entities."""
 
-import json
 import random
-from datetime import datetime
+
+from data_utils import merge_into_training_data
 
 # Business types and entity categories
 BUSINESS_TYPES_HE = [
@@ -204,35 +204,6 @@ def generate_naming_data(num_examples: int = 10000) -> list:
     return examples
 
 
-def save_naming_data(examples: list, output_file: str = "naming_training_data.json"):
-    """Save naming examples to a dedicated file."""
-    print(f"\nSaving {len(examples):,} naming examples...")
-
-    total_words = sum(len(item["text"].split()) for item in examples)
-
-    data = {
-        "metadata": {
-            "name": "Creative Naming Training Dataset",
-            "version": "1.0",
-            "description": "Training data for creative business naming suggestions",
-            "language": "he+en",
-            "generated_at": datetime.now().isoformat(),
-            "num_items": len(examples),
-            "total_words": total_words,
-        },
-        "articles": examples
-    }
-
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-    print(f"[OK] Saved {len(examples):,} naming examples to {output_file}")
-    print(f"  Total words: {total_words:,}")
-
-    import os
-    print(f"  File size: {os.path.getsize(output_file) / (1024 * 1024):.2f} MB")
-
-
 if __name__ == "__main__":
     examples = generate_naming_data(10000)
-    save_naming_data(examples)
+    merge_into_training_data(examples, "Naming")

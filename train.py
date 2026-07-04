@@ -34,14 +34,16 @@ if hasattr(sys.stdout, "reconfigure"):
 # ════════════════════════════════════════════════════════════════
 
 _HERE           = os.path.dirname(os.path.abspath(__file__))
+# training_data.json הוא מקור-האמת היחיד — כל דוגמאות האימון (דיאלוג, חשבון,
+# שמות, קוד) חיות בו. סקריפטי הגנרטור (add_math_data.py, generate_naming_data.py
+# וכו') ממזגים ישירות אליו לפי id, ולא כותבים קבצים נפרדים יותר.
 DATA_PATH       = os.path.join(_HERE, "training_data.json")
+# קבצים אופציונליים מ-collect_corpus.py / fetch_articles.py — נטענים אם קיימים
+# (לרוב לא מחוברים ל-git, ראה README); אם לא הורצו הכלים האלה, פשוט לא קיימים.
 API_DATA_PATH   = os.path.join(_HERE, "api_training_data.json")
 FETCHED_PATH    = os.path.join(_HERE, "fetched_articles.json")
-MATH_DATA_PATH  = os.path.join(_HERE, "math_training_data.json")
-NEW_EXAMPLES_PATH = os.path.join(_HERE, "new_training_examples.json")
-NAMING_DATA_PATH = os.path.join(_HERE, "naming_training_data.json")
 SOURCES_DIR     = os.path.join(_HERE, "sources")
-DATA_PATHS      = [DATA_PATH, API_DATA_PATH, FETCHED_PATH, MATH_DATA_PATH, NEW_EXAMPLES_PATH, NAMING_DATA_PATH]
+DATA_PATHS      = [DATA_PATH, API_DATA_PATH, FETCHED_PATH]
 SAVE_DIR        = _HERE
 HASHES_PATH     = os.path.join(SAVE_DIR, "trained_hashes.json")
 MODEL_PATH      = os.path.join(SAVE_DIR, "model.pt")

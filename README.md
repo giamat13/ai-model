@@ -145,12 +145,23 @@ This design separates *learning* (model decides "this is math") from *execution*
 
 ## Training Data
 
-### Built-in
-- `training_data.json` — Hand-written dialogue and facts (Hebrew + English)
-- `math_training_data.json` — Arithmetic exemplars (generated)
-  - Model learns to recognize operation intent across 20+ Hebrew/English phrasings
-  - Operands vary so the operator is the only predictable signal
-- `better_code_examples.json`, `simple_code.json` — Code snippets
+### Single source of truth
+**`training_data.json`** holds everything — hand-written dialogue, facts, arithmetic
+tool-calls, naming suggestions, and code snippets — one `{"metadata": {...}, "articles": [...]}`
+file, ~160.8k articles. It used to be split across five separate JSON files; two of
+them (`new_training_examples.json`, and `better_code_examples.json`/`simple_code.json`
+entirely) were silently never loaded due to a schema mismatch. Everything was merged
+in and the old files were removed — see [CLAUDE.md](CLAUDE.md) for the details.
+
+- **Arithmetic**: `python add_math_data.py` regenerates `<calc> +/-/*//` tool-call
+  exemplars and merges them in by `id` (model learns to recognize operation intent
+  across 20+ Hebrew/English phrasings; operands vary so the operator is the only
+  predictable signal)
+- **Naming**: `python generate_naming_data.py` regenerates creative-naming exemplars
+  and merges them in the same way
+
+Both use [`data_utils.merge_into_training_data()`](data_utils.py) — matching `id`s
+get replaced (safe to regenerate), new `id`s get appended.
 
 ### Optional (fetch externally)
 ```bash
@@ -160,20 +171,17 @@ python collect_corpus.py --source wikipedia --out api_training_data.json
 # GitHub code (requires GITHUB_TOKEN env var for high rate limits)
 python collect_corpus.py --source github --github-limit 20
 
-# Both
+# Both, merged straight into the single source of truth
 python collect_corpus.py --source both --merge-into training_data.json
 ```
 
 ### Add your own
-Edit `training_data.json` or append a new JSON file:
+Append to `training_data.json`'s `articles` list:
 ```json
-[
-  {"id": "unique_id_1", "text": "Your training text here."},
-  {"id": "unique_id_2", "text": "Another example."}
-]
+{"id": "unique_id_1", "text": "Your training text here."}
 ```
-
-Then add the path to `DATA_PATHS` in `train.py` and run:
+Or write a small generator script that calls `merge_into_training_data(articles, "Label")`
+from [data_utils.py](data_utils.py) — see `add_math_data.py` for the pattern. Then:
 ```bash
 python train.py
 ```
@@ -260,14 +268,16 @@ means you *can* scale up (more heads, more layers, GPU) when you want to.
 | `chat.py` | Tkinter GUI & inference |
 | `ask.py` | CLI mode (single query) |
 | `assistant_tools.py` | External tools (math, knowledge, code) |
-| `training_data.json` | Hand-written examples |
-| `math_training_data.json` | Arithmetic exemplars |
+| `data_utils.py` | Shared merge-by-`id` helper for generator scripts |
+| `training_data.json` | **Single source of truth** — all training data (~160.8k articles) |
+| `add_math_data.py` | Regenerates arithmetic tool-call exemplars, merges into `training_data.json` |
+| `generate_naming_data.py` | Regenerates naming exemplars, merges into `training_data.json` |
 | `CLAUDE.md` | Developer guide for Claude Code |
 
 ## Contributing
 
 The project is designed for easy extension:
-- **New training data**: Drop a JSON file in the project; add path to `DATA_PATHS` in train.py
+- **New training data**: append to `training_data.json`'s `articles` list, or write a generator script that calls `data_utils.merge_into_training_data()`
 - **New tools**: Add to `assistant_tools.py`; emit a signal from the model; wire it in `chat.py`'s `send()` function
 - **Hyperparameter tuning**: Use environment variables
 
